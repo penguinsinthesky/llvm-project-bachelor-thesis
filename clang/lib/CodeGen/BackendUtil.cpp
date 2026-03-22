@@ -88,6 +88,7 @@
 #include "llvm/Transforms/Instrumentation/SanitizerCoverage.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Instrumentation/TypeSanitizer.h"
+#include "llvm/Transforms/Instrumentation/XRayPreInlineInstrument.h"
 #include "llvm/Transforms/ObjCARC.h"
 #include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/Scalar/GVN.h"
@@ -179,7 +180,7 @@ class EmitAssemblyHelper {
   std::unique_ptr<llvm::ToolOutputFile> openOutputFile(StringRef Path) {
     std::error_code EC;
     auto F = std::make_unique<llvm::ToolOutputFile>(Path, EC,
-                                                     llvm::sys::fs::OF_None);
+                                                    llvm::sys::fs::OF_None);
     if (EC) {
       Diags.Report(diag::err_fe_unable_to_open_output) << Path << EC.message();
       F.reset();
@@ -816,18 +817,18 @@ void addLowerAllowCheckPass(const CodeGenOptions &CodeGenOpts,
       CodeGenOpts.AllowRuntimeCheckSkipHotCutoff.has_value() ||
       LowerAllowSanitize) {
     // We want to call it after inline, which is about OptimizerEarlyEPCallback.
-    PB.registerOptimizerEarlyEPCallback(
-        [ScaledCutoffs, AllowRuntimeCheckSkipHotCutoff](
-            ModulePassManager &MPM, OptimizationLevel Level,
-            ThinOrFullLTOPhase Phase) {
-          LowerAllowCheckPass::Options Opts;
-          // TODO: after removing IsRequested(), make this unconditional
-          if (ScaledCutoffs.has_value())
-            Opts.cutoffs = ScaledCutoffs.value();
-          Opts.runtime_check = AllowRuntimeCheckSkipHotCutoff;
-          MPM.addPass(
-              createModuleToFunctionPassAdaptor(LowerAllowCheckPass(Opts)));
-        });
+    PB.registerOptimizerEarlyEPCallback([ScaledCutoffs,
+                                         AllowRuntimeCheckSkipHotCutoff](
+                                            ModulePassManager &MPM,
+                                            OptimizationLevel Level,
+                                            ThinOrFullLTOPhase Phase) {
+      LowerAllowCheckPass::Options Opts;
+      // TODO: after removing IsRequested(), make this unconditional
+      if (ScaledCutoffs.has_value())
+        Opts.cutoffs = ScaledCutoffs.value();
+      Opts.runtime_check = AllowRuntimeCheckSkipHotCutoff;
+      MPM.addPass(createModuleToFunctionPassAdaptor(LowerAllowCheckPass(Opts)));
+    });
   }
 }
 
@@ -1018,12 +1019,11 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
     const bool PrepareForLTO = CodeGenOpts.PrepareForLTO;
 
     if (LangOpts.ObjCAutoRefCount) {
-      PB.registerPipelineStartEPCallback(
-          [](ModulePassManager &MPM, OptimizationLevel Level) {
-            if (Level != OptimizationLevel::O0)
-              MPM.addPass(
-                  createModuleToFunctionPassAdaptor(ObjCARCExpandPass()));
-          });
+      PB.registerPipelineStartEPCallback([](ModulePassManager &MPM,
+                                            OptimizationLevel Level) {
+        if (Level != OptimizationLevel::O0)
+          MPM.addPass(createModuleToFunctionPassAdaptor(ObjCARCExpandPass()));
+      });
       PB.registerScalarOptimizerLateEPCallback(
           [](FunctionPassManager &FPM, OptimizationLevel Level) {
             if (Level != OptimizationLevel::O0)
@@ -1107,6 +1107,14 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
             MPM.addPass(InstrProfilingLoweringPass(*Options, false));
           });
 
+    if (CodeGenOpts.XRayInstrumentFunctions &&
+        CodeGenOpts.XRayInstrumentInlined) {
+      PB.registerPipelineStartEPCallback(
+          [](ModulePassManager &MPM, OptimizationLevel Level) {
+            MPM.addPass(XRayPreInlineInstrumentPass());
+          });
+    }
+
     // TODO: Consider passing the MemoryProfileOutput to the pass builder via
     // the PGOOptions, and set this up there.
     if (!CodeGenOpts.MemoryProfileOutput.empty()) {
@@ -1162,8 +1170,8 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
           if (!ThinLinkOS)
             return;
         }
-        MPM.addPass(ThinLTOBitcodeWriterPass(
-            *OS, ThinLinkOS ? &ThinLinkOS->os() : nullptr));
+        MPM.addPass(ThinLTOBitcodeWriterPass(*OS, ThinLinkOS ? &ThinLinkOS->os()
+                                                             : nullptr));
       } else if (Action == Backend_EmitLL) {
         MPM.addPass(PrintModulePass(*OS, "", CodeGenOpts.EmitLLVMUseLists,
                                     /*EmitLTOSummary=*/true));
