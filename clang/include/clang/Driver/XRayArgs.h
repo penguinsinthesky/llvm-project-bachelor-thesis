@@ -27,6 +27,7 @@ class XRayArgs {
   XRayInstrSet InstrumentationBundle;
   llvm::opt::Arg *XRayInstrument = nullptr;
   bool XRayRT = true;
+  bool XRayInstrumentInlined = false;
   bool XRayShared = false;
 
 public:

@@ -63,6 +63,10 @@ XRayArgs::XRayArgs(const ToolChain &TC, const ArgList &Args) {
         << XRayInstrument->getSpelling() << Triple.str();
   }
 
+  if (Args.hasFlag(options::OPT_fxray_instrument_inlined, options::OPT_fno_xray_instrument_inlined, false)) {
+    XRayInstrumentInlined = true;
+  }
+
   if (Args.hasFlag(options::OPT_fxray_shared, options::OPT_fno_xray_shared,
                    false)) {
     XRayShared = true;
@@ -198,6 +202,10 @@ void XRayArgs::addArgs(const ToolChain &TC, const ArgList &Args,
                     options::OPT_fno_xray_ignore_loops);
   Args.addOptOutFlag(CmdArgs, options::OPT_fxray_function_index,
                      options::OPT_fno_xray_function_index);
+
+  if (XRayInstrumentInlined)
+    Args.addOptInFlag(CmdArgs, options::OPT_fxray_instrument_inlined,
+                      options::OPT_fno_xray_instrument_inlined);
 
   if (XRayShared)
     Args.addOptInFlag(CmdArgs, options::OPT_fxray_shared,

@@ -3382,6 +3382,12 @@ def fxray_selected_function_group :
   HelpText<"When using -fxray-function-groups, select which group of functions to instrument. Valid range is 0 to fxray-function-groups - 1">,
   MarshallingInfoInt<CodeGenOpts<"XRaySelectedFunctionGroup">, "0">;
 
+defm xray_instrument_inlined : BoolFOption<"xray-instrument-inlined",
+                              CodeGenOpts<"XRayInstrumentInlined">, DefaultFalse,
+                              PosFlag<SetTrue, [], [ClangOption, CC1Option],
+                                      "Also generate XRay instrumentation sleds on entry/exit of inlined functions">,
+                              NegFlag<SetFalse>>;
+
 defm xray_shared : BoolFOption<"xray-shared",
   CodeGenOpts<"XRayShared">, DefaultFalse,
   PosFlag<SetTrue, [], [ClangOption, CC1Option],
