@@ -1109,6 +1109,8 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
 
     if (CodeGenOpts.XRayInstrumentFunctions &&
         CodeGenOpts.XRayInstrumentInlined) {
+      // insert pass before optimizations are done so intrinsic calls will be
+      // inlined along with the function body
       PB.registerPipelineStartEPCallback(
           [](ModulePassManager &MPM, OptimizationLevel Level) {
             MPM.addPass(XRayPreInlineInstrumentPass());
