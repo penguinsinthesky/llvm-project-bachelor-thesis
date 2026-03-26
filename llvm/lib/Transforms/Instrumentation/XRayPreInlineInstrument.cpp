@@ -25,8 +25,28 @@ XRayPreInlineInstrumentPass::run(Module &M,
   return Modified ? PreservedAnalyses::none() : PreservedAnalyses::all();
 }
 bool XRayPreInlineInstrumentPass::shouldInstrument(const Function &F) {
-  // TODO check function attributes
-  return !F.isDeclaration();
+  if (F.isDeclaration()) {
+    // never instrument declarations
+    return false;
+  }
+
+  const auto InstrAttr = F.getFnAttribute("function-instrument");
+
+  const bool AlwaysInstrument = InstrAttr.isStringAttribute() &&
+                                InstrAttr.getValueAsString() == "xray-always";
+  const bool NeverInstrument = InstrAttr.isStringAttribute() &&
+                               InstrAttr.getValueAsString() == "xray-never";
+
+  if (NeverInstrument && !AlwaysInstrument) {
+    // always "beats" never if they are both present
+    return false;
+  }
+
+  // TODO check skip-enter/exit attributes, bundles
+
+  // TODO apply some heuristic now
+
+  return true;
 }
 
 void XRayPreInlineInstrumentPass::insertInstructions(Function &F) const {

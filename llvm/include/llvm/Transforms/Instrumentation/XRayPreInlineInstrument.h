@@ -5,7 +5,6 @@
 
 namespace llvm {
 
-// TODO register pass in clang
 class XRayPreInlineInstrumentPass
     : public PassInfoMixin<XRayPreInlineInstrumentPass> {
 public:
