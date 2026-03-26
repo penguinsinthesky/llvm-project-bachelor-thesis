@@ -2,6 +2,7 @@ add_llvm_component_library(LLVMXRay
   BlockIndexer.cpp
   BlockPrinter.cpp
   BlockVerifier.cpp
+  CustomRegionMetadata.cpp
   FDRRecordProducer.cpp
   FDRRecords.cpp
   FDRTraceExpander.cpp
