@@ -1,6 +1,7 @@
 #ifndef LLVM_XRAY_PRE_INLINE_INSTRUMENT_H
 #define LLVM_XRAY_PRE_INLINE_INSTRUMENT_H
 
+#include "llvm/Analysis/CGSCCPassManager.h"
 #include "llvm/IR/PassManager.h"
 
 namespace llvm {
@@ -16,6 +17,13 @@ private:
   static bool shouldInstrument(const Function &F);
 
   void insertInstructions(Function &F) const;
+};
+
+class XRayPostInlinePurgePass : public PassInfoMixin<XRayPostInlinePurgePass> {
+public:
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+
+  static bool isRequired() { return true; }
 };
 
 } // namespace llvm

@@ -88,7 +88,7 @@
 #include "llvm/Transforms/Instrumentation/SanitizerCoverage.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Instrumentation/TypeSanitizer.h"
-#include "llvm/Transforms/Instrumentation/XRayPreInlineInstrument.h"
+#include "llvm/Transforms/Instrumentation/XRayInlineInstrument.h"
 #include "llvm/Transforms/ObjCARC.h"
 #include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/Scalar/GVN.h"
@@ -1115,6 +1115,13 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
           [](ModulePassManager &MPM, OptimizationLevel Level) {
             MPM.addPass(XRayPreInlineInstrumentPass());
           });
+
+      // insert "cleanup" pass after inlining
+      PB.registerOptimizerEarlyEPCallback([](ModulePassManager &MPM,
+                                             OptimizationLevel Level,
+                                             ThinOrFullLTOPhase Phase) {
+        MPM.addPass(XRayPostInlinePurgePass());
+      });
     }
 
     // TODO: Consider passing the MemoryProfileOutput to the pass builder via

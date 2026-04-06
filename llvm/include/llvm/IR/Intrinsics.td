@@ -2144,10 +2144,10 @@ def int_pseudoprobe : DefaultAttrsIntrinsic<[],
 // This function might not be the call's parent function due to inlining.
 // Like `int_sideeffect`, it is set to have some memory access to ensure it
 // will not be moved around.
-def int_xray_customregionenter : DefaultAttrsIntrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
+def int_xray_customregionenter : DefaultAttrsIntrinsic<[], [llvm_metadata_ty], [IntrInaccessibleMemOnly]>;
 
 // Same as `int_xray_customregionenter` but for marking exits of custom XRay instrumentation regions.
-def int_xray_customregionexit : DefaultAttrsIntrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
+def int_xray_customregionexit : DefaultAttrsIntrinsic<[], [llvm_metadata_ty], [IntrInaccessibleMemOnly]>;
 
 // Saturating floating point to integer intrinsics
 let IntrProperties = [IntrNoMem, IntrSpeculatable, IntrNoCreateUndefOrPoison]

@@ -28,7 +28,7 @@ add_llvm_component_library(LLVMInstrumentation
   TypeSanitizer.cpp
   HWAddressSanitizer.cpp
   RealtimeSanitizer.cpp
-  XRayPreInlineInstrument.cpp
+  XRayInlineInstrument.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${LLVM_MAIN_INCLUDE_DIR}/llvm/Transforms
@@ -45,4 +45,5 @@ add_llvm_component_library(LLVMInstrumentation
   TargetParser
   TransformUtils
   ProfileData
+  XRay # TODO check if adding more dependencies is allowed/wanted
   )
