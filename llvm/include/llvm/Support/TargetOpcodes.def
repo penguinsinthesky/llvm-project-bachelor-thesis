@@ -226,6 +226,12 @@ HANDLE_TARGET_OPCODE(PATCHABLE_EVENT_CALL)
 /// can be patched to insert instrumentation instructions.
 HANDLE_TARGET_OPCODE(PATCHABLE_TYPED_EVENT_CALL)
 
+/// Marker instruction to generate sleds for entering custom XRay regions.
+HANDLE_TARGET_OPCODE(PATCHABLE_CUSTOM_REGION_BEGIN)
+
+/// Marker instruction to generate sleds for exiting custom XRay regions.
+HANDLE_TARGET_OPCODE(PATCHABLE_CUSTOM_REGION_EXIT)
+
 HANDLE_TARGET_OPCODE(ICALL_BRANCH_FUNNEL)
 
 /// Represents a use of the operand but generates no code.
