@@ -1659,7 +1659,7 @@ def PATCHABLE_TYPED_EVENT_CALL : StandardPseudoInstruction {
   let mayStore = true;
   let hasSideEffects = true;
 }
-def PATCHABLE_CUSTOM_REGION_BEGIN : StandardPseudoInstruction {
+def PATCHABLE_CUSTOM_REGION_ENTER : StandardPseudoInstruction {
   let OutOperandList = (outs);
   let InOperandList = (ins);
   let AsmString = "# XRay Custom Region Enter.";
