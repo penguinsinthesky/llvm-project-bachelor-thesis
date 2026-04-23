@@ -163,6 +163,8 @@ private:
                        VRBaseMapType &VRBaseMap);
   void EmitSpecialNode(SDNode *Node, bool IsClone, bool IsCloned,
                        VRBaseMapType &VRBaseMap);
+
+  void EmitCustomRegionProbeNode(const SDNode *Node, unsigned MIOpcode);
 };
 } // namespace llvm
 

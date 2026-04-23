@@ -450,6 +450,10 @@ public:
   /// references that need to refer to the last resulting block.
   void UpdateSplitBlock(MachineBasicBlock *First, MachineBasicBlock *Last);
 
+  /// Lower intrinsic calls to `llvm.xray.customregion{enter,exit}`.
+  /// Opcode must be the opcode of the corresponding pseudo machine instruction.
+  void LowerXRayCustomRegionProbe(const CallBase &Call, SDLoc sdl, unsigned ISDNodeType);
+
   /// Describes a gc.statepoint or a gc.statepoint like thing for the purposes
   /// of lowering into a STATEPOINT node.
   struct StatepointLoweringInfo {

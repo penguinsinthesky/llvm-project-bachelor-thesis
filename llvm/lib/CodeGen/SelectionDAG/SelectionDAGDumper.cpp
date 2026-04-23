@@ -495,6 +495,10 @@ std::string SDNode::getOperationName(const SelectionDAG *G) const {
     return "cond_loop";
   case ISD::PSEUDO_PROBE:
     return "pseudoprobe";
+  case ISD::PATCHABLE_CUSTOM_REGION_ENTER:
+    return "patchable_custom_region_enter";
+  case ISD::PATCHABLE_CUSTOM_REGION_EXIT:
+    return "patchable_custom_region_exit";
   case ISD::GC_TRANSITION_START:        return "gc_transition.start";
   case ISD::GC_TRANSITION_END:          return "gc_transition.end";
   case ISD::GET_DYNAMIC_AREA_OFFSET:    return "get.dynamic.area.offset";

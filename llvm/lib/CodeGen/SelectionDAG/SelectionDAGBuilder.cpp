@@ -102,6 +102,8 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Triple.h"
 #include "llvm/Transforms/Utils/Local.h"
+#include "llvm/XRay/CustomRegionInfo.h"
+
 #include <cstddef>
 #include <limits>
 #include <optional>
@@ -3692,6 +3694,26 @@ void SelectionDAGBuilder::UpdateSplitBlock(MachineBasicBlock *First,
   for (BitTestBlock &BTB : SL->BitTestCases)
     if (BTB.Parent == First)
       BTB.Parent = Last;
+}
+void SelectionDAGBuilder::LowerXRayCustomRegionProbe(const CallBase &Call,
+                                                     const SDLoc sdl,
+                                                     const unsigned ISDNodeType) {
+  assert((ISDNodeType == ISD::PATCHABLE_CUSTOM_REGION_ENTER ||
+    ISDNodeType == ISD::PATCHABLE_CUSTOM_REGION_EXIT)
+    && "Illegal ISD NodeType for lowering XRay custom regions probes");
+
+  // TODO check target arch
+  const MDNode *RegionMD = cast<MDNode>(cast<MetadataAsValue>(Call.getArgOperand(0))->getMetadata());
+
+  // add chain to make sure this instruction is after all previous instructions
+  const SDValue Chain = getRoot();
+  const SDValue RegionMDValue = DAG.getMDNode(RegionMD);
+
+  const SmallVector<SDValue, 2> Ops {Chain, RegionMDValue}; // metadata last!
+  const SDValue V = DAG.getNode(ISDNodeType, sdl, MVT::Other, Ops);
+
+  DAG.setRoot(V); // update root node
+  setValue(&Call, V);
 }
 
 void SelectionDAGBuilder::visitIndirectBr(const IndirectBrInst &I) {
@@ -8183,6 +8205,14 @@ void SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I,
     SDValue patchableNode = SDValue(MN, 0);
     DAG.setRoot(patchableNode);
     setValue(&I, patchableNode);
+    return;
+  }
+  case Intrinsic::xray_customregionenter: {
+    LowerXRayCustomRegionProbe(I, sdl, ISD::PATCHABLE_CUSTOM_REGION_ENTER);
+    return;
+  }
+  case Intrinsic::xray_customregionexit: {
+    LowerXRayCustomRegionProbe(I, sdl, ISD::PATCHABLE_CUSTOM_REGION_EXIT);
     return;
   }
   case Intrinsic::experimental_deoptimize:

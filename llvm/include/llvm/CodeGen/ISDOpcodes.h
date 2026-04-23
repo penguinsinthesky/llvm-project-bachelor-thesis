@@ -1500,6 +1500,9 @@ enum NodeType {
   /// the sample counts quality.
   PSEUDO_PROBE,
 
+  PATCHABLE_CUSTOM_REGION_ENTER,
+  PATCHABLE_CUSTOM_REGION_EXIT,
+
   /// VSCALE(IMM) - Returns the runtime scaling factor used to calculate the
   /// number of elements within a scalable vector. IMM is a constant integer
   /// multiplier that is applied to the runtime value.

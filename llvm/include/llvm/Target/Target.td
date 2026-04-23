@@ -1663,14 +1663,14 @@ def PATCHABLE_CUSTOM_REGION_ENTER : StandardPseudoInstruction {
   let OutOperandList = (outs);
   let InOperandList = (ins);
   let AsmString = "# XRay Custom Region Enter.";
-  let usesCustomInserter = true;
+  //let usesCustomInserter = true;
   let hasSideEffects = true;
 }
 def PATCHABLE_CUSTOM_REGION_EXIT : StandardPseudoInstruction {
   let OutOperandList = (outs);
   let InOperandList = (ins);
   let AsmString = "# XRay Custom Region Exit.";
-  let usesCustomInserter = true;
+  //let usesCustomInserter = true;
   let hasSideEffects = true;
 }
 def FENTRY_CALL : StandardPseudoInstruction {

@@ -3386,6 +3386,8 @@ void SelectionDAGISel::SelectCodeCommon(SDNode *NodeToMatch,
   case ISD::LIFETIME_START:
   case ISD::LIFETIME_END:
   case ISD::PSEUDO_PROBE:
+  case ISD::PATCHABLE_CUSTOM_REGION_ENTER:
+  case ISD::PATCHABLE_CUSTOM_REGION_EXIT:
   case ISD::DEACTIVATION_SYMBOL:
     NodeToMatch->setNodeId(-1); // Mark selected.
     return;
