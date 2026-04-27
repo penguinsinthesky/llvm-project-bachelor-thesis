@@ -190,6 +190,12 @@ bool patchSled(const XRaySledEntry &Sled, bool Enable, int32_t FuncId,
   case XRayEntryType::TYPED_EVENT:
     Success = patchTypedEvent(Enable, FuncId, Sled);
     break;
+  case XRayEntryType::CUSTOM_REGION_ENTRY:
+    Success = patchCustomRegionEntry(Enable, FuncId, Sled, Trampolines);
+    break;
+  case XRayEntryType::CUSTOM_REGION_EXIT:
+    Success = patchCustomRegionExit(Enable, FuncId, Sled, Trampolines);
+    break;
   default:
     Report("Unsupported sled kind '%" PRIu64 "' @%04x\n", Sled.Address,
            int(Sled.Kind));

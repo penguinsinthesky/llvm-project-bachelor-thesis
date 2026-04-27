@@ -29,6 +29,8 @@ extern void __xray_FunctionTailExit();
 extern void __xray_ArgLoggerEntry();
 extern void __xray_CustomEvent();
 extern void __xray_TypedEvent();
+extern void __xray_CustomRegionEntry();
+extern void __xray_CustomRegionExit();
 #if defined(__s390x__)
 extern void __xray_FunctionEntryVec();
 extern void __xray_FunctionExitVec();
@@ -89,6 +91,8 @@ struct XRayTrampolines {
   void (*ExitTrampoline)();
   void (*TailExitTrampoline)();
   void (*LogArgsTrampoline)();
+  void (*CustomRegionEntryTrampoline)();
+  void (*CustomRegionExitTrampoline)();
 
   XRayTrampolines() {
     // These resolve to the definitions in the respective executable or DSO.
@@ -96,6 +100,8 @@ struct XRayTrampolines {
     ExitTrampoline = __xray_FunctionExit;
     TailExitTrampoline = __xray_FunctionTailExit;
     LogArgsTrampoline = __xray_ArgLoggerEntry;
+    CustomRegionEntryTrampoline = __xray_CustomRegionEntry;
+    CustomRegionExitTrampoline = __xray_CustomRegionExit;
   }
 };
 
@@ -148,6 +154,12 @@ bool patchFunctionTailExit(bool Enable, uint32_t FuncId,
                            const XRayTrampolines &Trampolines);
 bool patchCustomEvent(bool Enable, uint32_t FuncId, const XRaySledEntry &Sled);
 bool patchTypedEvent(bool Enable, uint32_t FuncId, const XRaySledEntry &Sled);
+bool patchCustomRegionEntry(bool Enable, uint32_t FuncId,
+                            const XRaySledEntry &Sled,
+                            const XRayTrampolines &Trampolines);
+bool patchCustomRegionExit(bool Enable, uint32_t FuncId,
+                           const XRaySledEntry &Sled,
+                           const XRayTrampolines &Trampolines);
 
 } // namespace __xray
 

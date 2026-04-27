@@ -312,6 +312,52 @@ bool patchTypedEvent(const bool Enable, const uint32_t FuncId,
   return false;
 }
 
+static bool patchCustomRegionProbe(const bool Enable, const uint32_t FuncId,
+                                   const XRaySledEntry &Sled,
+                                   void (*Trampoline)()) {
+
+  // pretty much same as FUNCTION_ENTRY
+  const uint64_t Address = Sled.address();
+
+  const int64_t TrampolineOffset = reinterpret_cast<int64_t>(Trampoline) -
+                                   (static_cast<int64_t>(Address) + 11);
+  if (TrampolineOffset < MinOffset || TrampolineOffset > MaxOffset) {
+    Report("XRay Custom Region Entry trampoline (%p) too far from sled (%p)\n",
+           reinterpret_cast<void *>(Trampoline),
+           reinterpret_cast<void *>(Address));
+    return false;
+  }
+
+  if (Enable) {
+    *reinterpret_cast<uint32_t *>(Address + 2) = FuncId;
+    *reinterpret_cast<uint8_t *>(Address + 6) = CallOpCode;
+    *reinterpret_cast<uint32_t *>(Address + 7) = TrampolineOffset;
+    std::atomic_store_explicit(
+        reinterpret_cast<std::atomic<uint16_t> *>(Address), MovR10Seq,
+        std::memory_order_release);
+  } else {
+    std::atomic_store_explicit(
+        reinterpret_cast<std::atomic<uint16_t> *>(Address), Jmp9Seq,
+        std::memory_order_release);
+    // FIXME: Write out the nops still?
+  }
+  return true;
+}
+
+bool patchCustomRegionEntry(
+    const bool Enable, const uint32_t FuncId, const XRaySledEntry &Sled,
+    const XRayTrampolines &Trampolines) XRAY_NEVER_INSTRUMENT {
+  return patchCustomRegionProbe(Enable, FuncId, Sled,
+                                Trampolines.CustomRegionEntryTrampoline);
+}
+
+bool patchCustomRegionExit(
+    const bool Enable, const uint32_t FuncId, const XRaySledEntry &Sled,
+    const XRayTrampolines &Trampolines) XRAY_NEVER_INSTRUMENT {
+  return patchCustomRegionProbe(Enable, FuncId, Sled,
+                                Trampolines.CustomRegionExitTrampoline);
+}
+
 #if !SANITIZER_FUCHSIA
 // We determine whether the CPU we're running on has the correct features we
 // need. In x86_64 this will be rdtscp support.

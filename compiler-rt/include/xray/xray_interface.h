@@ -34,6 +34,8 @@ enum XRayEntryType {
   LOG_ARGS_ENTRY = 3,
   CUSTOM_EVENT = 4,
   TYPED_EVENT = 5,
+  CUSTOM_REGION_ENTRY = 6,
+  CUSTOM_REGION_EXIT = 7,
 };
 
 /// Provide a function to invoke for when instrumentation points are hit. This
