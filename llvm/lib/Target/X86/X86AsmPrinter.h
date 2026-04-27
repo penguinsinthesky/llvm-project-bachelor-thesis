@@ -121,6 +121,7 @@ private:
   void LowerPATCHABLE_EVENT_CALL(const MachineInstr &MI, X86MCInstLower &MCIL);
   void LowerPATCHABLE_TYPED_EVENT_CALL(const MachineInstr &MI,
                                        X86MCInstLower &MCIL);
+  void LowerCustomRegionProbe(const MachineInstr &MI, SledKind SK);
 
   void LowerFENTRY_CALL(const MachineInstr &MI, X86MCInstLower &MCIL);
 

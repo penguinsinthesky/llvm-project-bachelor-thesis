@@ -405,6 +405,8 @@ public:
     LOG_ARGS_ENTER = 3,
     CUSTOM_EVENT = 4,
     TYPED_EVENT = 5,
+    CUSTOM_REGION_ENTER = 6,
+    CUSTOM_REGION_EXIT = 7,
   };
 
   // The table will contain these structs that point to the sled, the function

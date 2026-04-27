@@ -52,6 +52,7 @@
 #include "llvm/Transforms/CFGuard.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizerCommon.h"
+#include "llvm/XRay/CustomRegionInfo.h"
 #include <string>
 
 using namespace llvm;
@@ -1300,6 +1301,47 @@ void X86AsmPrinter::LowerPATCHABLE_TYPED_EVENT_CALL(const MachineInstr &MI,
   recordSled(CurSled, MI, SledKind::TYPED_EVENT, 2);
 }
 
+void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
+                                           const SledKind SK) {
+  assert((SK == SledKind::CUSTOM_REGION_ENTER ||
+          SK == SledKind::CUSTOM_REGION_EXIT) &&
+         "SledKind of custom region probe must be CUSTOM_REGION_ENTER or "
+         "CUSTOM_REGION_EXIT");
+
+  const Metadata *RegionMD = MI.getOperand(0).getMetadata();
+  const xray::XRayCustomRegionInfo RegionInfo =
+      xray::XRayCustomRegionInfo::fromMetadata(RegionMD);
+
+  // do not allow automatic padding as the exact number of bytes matters here
+  NoAutoPaddingScope NoPadScope(*OutStreamer);
+
+  // emitted code is the same as for FUNCTION_ENTER
+
+  auto *CurSled = OutContext.createTempSymbol("xray_sled_", true);
+  // make sure that the sled address is aligned
+  OutStreamer->emitCodeAlignment(Align(2), &getSubtargetInfo());
+  OutStreamer->emitLabel(CurSled);
+
+  // Use a two-byte `jmp`. This version of JMP takes an 8-bit relative offset as
+  // an operand (computed as an offset from the jmp instruction).
+#if 0 // assembler doesn't care and still produces "jump near"
+  OutStreamer->emitInstruction(
+      MCInstBuilder(X86::JMP_1) // JMP_1 corresponds to "jump short"
+          .addImm(9), // jump over the next 9 bytes (we have 9 bytes of nops)
+      getSubtargetInfo());
+#endif
+  OutStreamer->emitBytes("\xeb\x09"); // ugly hack to force jmp type
+
+  // exactly 9 bytes worth of nops => 11 patchable bytes in total including jmp
+  emitX86Nops(*OutStreamer, 9, Subtarget);
+
+  // record sled with appropriate sled kind
+  recordSled(CurSled, MI, SK, 2);
+
+  // emit additional data according to custom region kind
+  // TODO do it
+}
+
 void X86AsmPrinter::LowerPATCHABLE_FUNCTION_ENTER(const MachineInstr &MI,
                                                   X86MCInstLower &MCIL) {
 
@@ -2541,6 +2583,10 @@ void X86AsmPrinter::emitInstruction(const MachineInstr *MI) {
 
   case TargetOpcode::PATCHABLE_TYPED_EVENT_CALL:
     return LowerPATCHABLE_TYPED_EVENT_CALL(*MI, MCInstLowering);
+  case TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER:
+    return LowerCustomRegionProbe(*MI, SledKind::CUSTOM_REGION_ENTER);
+  case TargetOpcode::PATCHABLE_CUSTOM_REGION_EXIT:
+    return LowerCustomRegionProbe(*MI, SledKind::CUSTOM_REGION_EXIT);
 
   case X86::MORESTACK_RET:
     EmitAndCountInstruction(MCInstBuilder(getRetOpcode(*Subtarget)));
