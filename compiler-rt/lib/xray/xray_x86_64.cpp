@@ -113,6 +113,7 @@ static constexpr uint16_t MovR10Seq = 0xba41;
 static constexpr uint16_t Jmp9Seq = 0x09eb;
 static constexpr uint16_t Jmp20Seq = 0x14eb;
 static constexpr uint16_t Jmp15Seq = 0x0feb;
+static constexpr uint16_t Jmp19Seq = 0x13eb;
 static constexpr uint8_t JmpOpCode = 0xe9;
 static constexpr uint8_t RetOpCode = 0xc3;
 static constexpr uint16_t NopwSeq = 0x9066;
@@ -312,50 +313,44 @@ bool patchTypedEvent(const bool Enable, const uint32_t FuncId,
   return false;
 }
 
-static bool patchCustomRegionProbe(const bool Enable, const uint32_t FuncId,
-                                   const XRaySledEntry &Sled,
-                                   void (*Trampoline)()) {
-
-  // pretty much same as FUNCTION_ENTRY
+static bool patchCustomRegionProbe(const bool Enable, const XRaySledEntry &Sled)
+    XRAY_NEVER_INSTRUMENT {
+  // Here we do the dance of replacing the following sled:
+  //
+  // xray_custom_region_sled_n:
+  //   jmp +19          // 2 bytes
+  //   ...
+  //
+  // With the following:
+  //
+  //   nopw             // 2 bytes*
+  //   ...
+  //
+  //
+  // The "unpatch" should just turn the 'nopw' back to a 'jmp +19'.
   const uint64_t Address = Sled.address();
-
-  const int64_t TrampolineOffset = reinterpret_cast<int64_t>(Trampoline) -
-                                   (static_cast<int64_t>(Address) + 11);
-  if (TrampolineOffset < MinOffset || TrampolineOffset > MaxOffset) {
-    Report("XRay Custom Region Entry trampoline (%p) too far from sled (%p)\n",
-           reinterpret_cast<void *>(Trampoline),
-           reinterpret_cast<void *>(Address));
-    return false;
-  }
-
   if (Enable) {
-    *reinterpret_cast<uint32_t *>(Address + 2) = FuncId;
-    *reinterpret_cast<uint8_t *>(Address + 6) = CallOpCode;
-    *reinterpret_cast<uint32_t *>(Address + 7) = TrampolineOffset;
     std::atomic_store_explicit(
-        reinterpret_cast<std::atomic<uint16_t> *>(Address), MovR10Seq,
+        reinterpret_cast<std::atomic<uint16_t> *>(Address), NopwSeq,
         std::memory_order_release);
   } else {
     std::atomic_store_explicit(
-        reinterpret_cast<std::atomic<uint16_t> *>(Address), Jmp9Seq,
+        reinterpret_cast<std::atomic<uint16_t> *>(Address), Jmp19Seq,
         std::memory_order_release);
-    // FIXME: Write out the nops still?
   }
-  return true;
+  return false; // TODO why return false?
 }
 
 bool patchCustomRegionEntry(
     const bool Enable, const uint32_t FuncId, const XRaySledEntry &Sled,
     const XRayTrampolines &Trampolines) XRAY_NEVER_INSTRUMENT {
-  return patchCustomRegionProbe(Enable, FuncId, Sled,
-                                Trampolines.CustomRegionEntryTrampoline);
+  return patchCustomRegionProbe(Enable, Sled);
 }
 
 bool patchCustomRegionExit(
     const bool Enable, const uint32_t FuncId, const XRaySledEntry &Sled,
     const XRayTrampolines &Trampolines) XRAY_NEVER_INSTRUMENT {
-  return patchCustomRegionProbe(Enable, FuncId, Sled,
-                                Trampolines.CustomRegionExitTrampoline);
+  return patchCustomRegionProbe(Enable, Sled);
 }
 
 #if !SANITIZER_FUCHSIA

@@ -514,6 +514,8 @@ void fdrLoggingHandleArg0(int32_t FuncId,
     return;
   case XRayEntryType::CUSTOM_EVENT:
   case XRayEntryType::TYPED_EVENT:
+  case XRayEntryType::CUSTOM_REGION_ENTRY:
+  case XRayEntryType::CUSTOM_REGION_EXIT:
     break;
   }
 }
@@ -544,6 +546,8 @@ void fdrLoggingHandleArg1(int32_t FuncId, XRayEntryType Entry,
     return;
   case XRayEntryType::CUSTOM_EVENT:
   case XRayEntryType::TYPED_EVENT:
+  case XRayEntryType::CUSTOM_REGION_ENTRY:
+  case XRayEntryType::CUSTOM_REGION_EXIT:
     break;
   }
 }

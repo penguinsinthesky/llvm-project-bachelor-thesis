@@ -318,4 +318,29 @@ LOCAL_LABEL(typedEventCleanup):
 
 //===----------------------------------------------------------------------===//
 
+	.global ASM_SYMBOL(__xray_CustomRegionProbe)
+	.align 16, 0x90
+	ASM_TYPE_FUNCTION(__xray_CustomRegionProbe)
+# LLVM-MCA-BEGIN __xray_CustomRegionProbe
+ASM_SYMBOL(__xray_CustomRegionProbe):
+	CFI_STARTPROC
+	SAVE_REGISTERS
+
+	// We take two arguments to this trampoline, which should be in edi	and esi
+	// already.
+	LOAD_HANDLER_ADDR _ZN6__xray28XRayPatchedCustomRegionProbeE
+	testq %rax,%rax
+	je LOCAL_LABEL(customRegionProbeCleanup)
+
+	callq	*%rax
+
+LOCAL_LABEL(customRegionProbeCleanup):
+	RESTORE_REGISTERS
+	retq
+# LLVM-MCA-END
+	ASM_SIZE(__xray_CustomRegionProbe)
+	CFI_ENDPROC
+
+//===----------------------------------------------------------------------===//
+
 NO_EXEC_STACK_DIRECTIVE

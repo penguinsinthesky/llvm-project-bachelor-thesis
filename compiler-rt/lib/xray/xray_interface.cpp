@@ -79,6 +79,9 @@ atomic_uintptr_t XRayPatchedCustomEvent SANITIZER_INTERFACE_ATTRIBUTE{0};
 // This is the function to call when we encounter a typed event log call.
 atomic_uintptr_t XRayPatchedTypedEvent SANITIZER_INTERFACE_ATTRIBUTE{0};
 
+// This is the function to call when we encounter a custom region probe.
+atomic_uintptr_t XRayPatchedCustomRegionProbe SANITIZER_INTERFACE_ATTRIBUTE{0};
+
 // This is the global status to determine whether we are currently
 // patching/unpatching.
 atomic_uint8_t XRayPatching{0};
@@ -551,6 +554,17 @@ int __xray_set_typedevent_handler(void (*entry)(size_t, const void *,
   return 0;
 }
 
+int __xray_set_custom_region_handler(void (*entry)(int32_t, XRayEntryType))
+    XRAY_NEVER_INSTRUMENT {
+  if (atomic_load(&XRayInitialized, memory_order_acquire)) {
+
+    atomic_store(&__xray::XRayPatchedCustomRegionProbe,
+                 reinterpret_cast<uintptr_t>(entry), memory_order_release);
+    return 1;
+  }
+  return 0;
+}
+
 int __xray_remove_handler() XRAY_NEVER_INSTRUMENT {
   return __xray_set_handler(nullptr);
 }
@@ -561,6 +575,10 @@ int __xray_remove_customevent_handler() XRAY_NEVER_INSTRUMENT {
 
 int __xray_remove_typedevent_handler() XRAY_NEVER_INSTRUMENT {
   return __xray_set_typedevent_handler(nullptr);
+}
+
+int __xray_remove_custom_region_handler() XRAY_NEVER_INSTRUMENT {
+  return __xray_set_custom_region_handler(nullptr);
 }
 
 uint16_t __xray_register_event_type(

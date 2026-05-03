@@ -95,6 +95,11 @@ extern int __xray_remove_typedevent_handler();
 
 extern uint16_t __xray_register_event_type(const char *event_type);
 
+extern int __xray_set_custom_region_handler(void (*entry)(int32_t,
+                                                          enum XRayEntryType));
+
+extern int __xray_remove_custom_region_handler();
+
 enum XRayPatchingStatus {
   NOT_INITIALIZED = 0,
   SUCCESS = 1,
