@@ -29,6 +29,7 @@
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/XRay/CustomRegionInfo.h"
 #include <cstdint>
 #include <memory>
 #include <utility>
@@ -426,13 +427,18 @@ public:
 
   // All the sleds to be emitted.
   SmallVector<XRayFunctionEntry, 4> Sleds;
+  SmallVector<xray::XRayCustomRegionInfo, 4> CustomRegionInfos;
 
   // Helper function to record a given XRay sled.
   void recordSled(MCSymbol *Sled, const MachineInstr &MI, SledKind Kind,
                   uint8_t Version = 0);
 
+  uint32_t recordCustomRegionInfo(const xray::XRayCustomRegionInfo &Info);
+
   /// Emit a table with all XRay instrumentation points.
   void emitXRayTable();
+
+  void emitXRayCustomRegionData();
 
   void emitPatchableFunctionEntries();
 

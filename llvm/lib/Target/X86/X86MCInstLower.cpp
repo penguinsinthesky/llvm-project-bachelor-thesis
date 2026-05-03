@@ -1302,7 +1302,8 @@ void X86AsmPrinter::LowerPATCHABLE_TYPED_EVENT_CALL(const MachineInstr &MI,
 }
 
 void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
-                                           const SledKind SK) {
+                                           const SledKind SK,
+                                           X86MCInstLower &MCIL) {
   assert((SK == SledKind::CUSTOM_REGION_ENTER ||
           SK == SledKind::CUSTOM_REGION_EXIT) &&
          "SledKind of custom region probe must be CUSTOM_REGION_ENTER or "
@@ -1315,31 +1316,67 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
   // do not allow automatic padding as the exact number of bytes matters here
   NoAutoPaddingScope NoPadScope(*OutStreamer);
 
-  // emitted code is the same as for FUNCTION_ENTER
+  // We want to emit the following pattern, which follows the x86 calling
+  // convention to prepare for the trampoline call to be patched in.
+  //
+  //   .p2align 1, ...
+  // .Lxray_custom_region_sled_N:
+  //   jmp 19                               // jump across the entire sled
+  //   push %edi                            // stash %edi or nop if unused
+  //   push %esi                            // stash %esi or nop if unused
+  //   movl %edi, <region-id>               // pass region ID via %edi
+  //   movl %esi, <sled-kind>               // pass sled kind via %esi
+  //   callq __xray_CustomRegionProbe@plt   // force dependency to symbol
+  //   pop %esi                             // restore %esi or nop if not used
+  //   pop %edi                             // restore %edi or nop if not used
+  //   <jump here>
+  //
+  // Patching will replace the jump with a nop so the trampoline call gets
+  // executed. Unpatching simply puts the jmp back in place.
 
-  auto *CurSled = OutContext.createTempSymbol("xray_sled_", true);
+  auto *CurSled = OutContext.createTempSymbol("xray_custom_region_sled_", true);
   // make sure that the sled address is aligned
   OutStreamer->emitCodeAlignment(Align(2), &getSubtargetInfo());
   OutStreamer->emitLabel(CurSled);
 
   // Use a two-byte `jmp`. This version of JMP takes an 8-bit relative offset as
   // an operand (computed as an offset from the jmp instruction).
-#if 0 // assembler doesn't care and still produces "jump near"
-  OutStreamer->emitInstruction(
-      MCInstBuilder(X86::JMP_1) // JMP_1 corresponds to "jump short"
-          .addImm(9), // jump over the next 9 bytes (we have 9 bytes of nops)
-      getSubtargetInfo());
-#endif
-  OutStreamer->emitBytes("\xeb\x09"); // ugly hack to force jmp type
+  // TODO check actual size
+  OutStreamer->emitBytes("\xeb\x13"); // jmp over 19 bytes of the sled
 
-  // exactly 9 bytes worth of nops => 11 patchable bytes in total including jmp
-  emitX86Nops(*OutStreamer, 9, Subtarget);
+  // stash the two used registers on the stack
+  EmitAndCountInstruction(MCInstBuilder(X86::PUSH64r).addReg(X86::EDI));
+  EmitAndCountInstruction(MCInstBuilder(X86::PUSH64r).addReg(X86::ESI));
+
+  const uint32_t RegionID = recordCustomRegionInfo(RegionInfo);
+
+  // put region ID and sled kind into registers as "arguments" as per calling
+  // conv
+  EmitAndCountInstruction(MCInstBuilder(X86::MOV32ri)
+                              .addReg(X86::EDI)
+                              .addImm(RegionID)); // store region id in %edi
+  EmitAndCountInstruction(
+      MCInstBuilder(X86::MOV32ri)
+          .addReg(X86::ESI)
+          .addImm(static_cast<int64_t>(SK))); // store sled kind in %esi
+
+  auto *TSym = OutContext.getOrCreateSymbol("__xray_CustomRegionProbe");
+  MachineOperand TOp = MachineOperand::CreateMCSymbol(TSym);
+  if (isPositionIndependent())
+    TOp.setTargetFlags(X86II::MO_PLT);
+
+  // Emit the call to the trampoline.
+  EmitAndCountInstruction(MCInstBuilder(X86::CALL64pcrel32)
+                              .addOperand(MCIL.LowerSymbolOperand(TOp, TSym)));
+
+  // restore the two registers (reverse order!)
+  EmitAndCountInstruction(MCInstBuilder(X86::POP64r).addReg(X86::ESI));
+  EmitAndCountInstruction(MCInstBuilder(X86::POP64r).addReg(X86::EDI));
+
+  OutStreamer->AddComment("xray custom region end.");
 
   // record sled with appropriate sled kind
   recordSled(CurSled, MI, SK, 2);
-
-  // emit additional data according to custom region kind
-  // TODO do it
 }
 
 void X86AsmPrinter::LowerPATCHABLE_FUNCTION_ENTER(const MachineInstr &MI,
@@ -2584,9 +2621,11 @@ void X86AsmPrinter::emitInstruction(const MachineInstr *MI) {
   case TargetOpcode::PATCHABLE_TYPED_EVENT_CALL:
     return LowerPATCHABLE_TYPED_EVENT_CALL(*MI, MCInstLowering);
   case TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER:
-    return LowerCustomRegionProbe(*MI, SledKind::CUSTOM_REGION_ENTER);
+    return LowerCustomRegionProbe(*MI, SledKind::CUSTOM_REGION_ENTER,
+                                  MCInstLowering);
   case TargetOpcode::PATCHABLE_CUSTOM_REGION_EXIT:
-    return LowerCustomRegionProbe(*MI, SledKind::CUSTOM_REGION_EXIT);
+    return LowerCustomRegionProbe(*MI, SledKind::CUSTOM_REGION_EXIT,
+                                  MCInstLowering);
 
   case X86::MORESTACK_RET:
     EmitAndCountInstruction(MCInstBuilder(getRetOpcode(*Subtarget)));

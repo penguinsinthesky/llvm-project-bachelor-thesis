@@ -103,7 +103,7 @@ struct RemoveOwnIntrinsicVisitor : InstVisitor<RemoveOwnIntrinsicVisitor> {
     }
 
     const std::optional<Function *> OriginalFunction =
-        RegionMD.getInlinedFunctionMD().OriginalFunction;
+        RegionMD.getInlinedFunctionInfo().OriginalFunction;
 
     if (OriginalFunction.has_value() &&
         OriginalFunction.value() == ParentFunction) {

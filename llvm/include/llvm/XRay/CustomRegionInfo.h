@@ -8,9 +8,11 @@
 
 namespace llvm::xray {
 
-enum CustomRegionKind : uint32_t { INLINED_FUNCTION = 1, USER_PLACED = 2 };
+enum CustomRegionKind : uint8_t { INLINED_FUNCTION = 1, USER_PLACED = 2 };
 
 struct UserPlacedRegionInfo {
+  StringRef RegionName;
+
   Metadata *createMetadata(LLVMContext &Ctx) const;
 
   static UserPlacedRegionInfo fromMetadata(const Metadata *MD);
@@ -44,8 +46,18 @@ public:
 
   [[nodiscard]] CustomRegionKind getKind() const { return Kind; }
 
-  [[nodiscard]] InlinedFunctionRegionInfo getInlinedFunctionMD() const {
+  [[nodiscard]] InlinedFunctionRegionInfo getInlinedFunctionInfo() const {
     return std::get<InlinedFunctionRegionInfo>(Specific);
+  }
+
+  [[nodiscard]] UserPlacedRegionInfo getUserPlacedRegionInfo() const {
+    return std::get<UserPlacedRegionInfo>(Specific);
+  }
+
+  [[nodiscard]] const std::variant<InlinedFunctionRegionInfo,
+                                   UserPlacedRegionInfo> &
+  getSpecific() const {
+    return Specific;
   }
 };
 
