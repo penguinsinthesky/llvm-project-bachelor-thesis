@@ -438,7 +438,7 @@ public:
   /// Emit a table with all XRay instrumentation points.
   void emitXRayTable();
 
-  void emitXRayCustomRegionData();
+  void emitXRayCustomRegionData(MCSection *CustomRegionsSection);
 
   void emitPatchableFunctionEntries();
 

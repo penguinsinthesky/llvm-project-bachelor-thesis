@@ -5052,6 +5052,8 @@ void AsmPrinter::emitXRayTable() {
   const Function &F = MF->getFunction();
   MCSection *InstMap = nullptr;
   MCSection *FnSledIndex = nullptr;
+  MCSection *CustomRegionsSection = nullptr;
+
   const Triple &TT = TM.getTargetTriple();
   // Use PC-relative addresses on all targets.
   if (TT.isOSBinFormatELF()) {
@@ -5070,6 +5072,11 @@ void AsmPrinter::emitXRayTable() {
       FnSledIndex = OutContext.getELFSection(
           "xray_fn_idx", ELF::SHT_PROGBITS, Flags, 0, GroupName, F.hasComdat(),
           MCSection::NonUniqueID, LinkedToSym);
+    if (!CustomRegionInfos.empty()) {
+      CustomRegionsSection = OutContext.getELFSection(
+          "xray_custom_regions", ELF::SHT_PROGBITS, Flags, 0, GroupName,
+          F.hasComdat(), MCSection::NonUniqueID, LinkedToSym);
+    }
   } else if (MF->getSubtarget().getTargetTriple().isOSBinFormatMachO()) {
     InstMap = OutContext.getMachOSection("__DATA", "xray_instr_map",
                                          MachO::S_ATTR_LIVE_SUPPORT,
@@ -5078,6 +5085,11 @@ void AsmPrinter::emitXRayTable() {
       FnSledIndex = OutContext.getMachOSection("__DATA", "xray_fn_idx",
                                                MachO::S_ATTR_LIVE_SUPPORT,
                                                SectionKind::getReadOnly());
+    if (!CustomRegionInfos.empty()) {
+      CustomRegionsSection = OutContext.getMachOSection(
+          "__DATA", "xray_custom_regions", MachO::S_ATTR_LIVE_SUPPORT,
+          SectionKind::getReadOnly());
+    }
   } else {
     llvm_unreachable("Unsupported target");
   }
@@ -5112,8 +5124,10 @@ void AsmPrinter::emitXRayTable() {
   MCSymbol *SledsEnd = OutContext.createTempSymbol("xray_sleds_end", true);
   OutStreamer->emitLabel(SledsEnd);
 
-  // emit custom region information in same section
-  emitXRayCustomRegionData();
+  // emit custom region information into separate section
+  if (CustomRegionsSection != nullptr) {
+    emitXRayCustomRegionData(CustomRegionsSection);
+  }
 
   // We then emit a single entry in the index per function. We use the symbols
   // that bound the instrumentation map as the range for a specific function.
@@ -5137,17 +5151,23 @@ void AsmPrinter::emitXRayTable() {
   Sleds.clear();
 }
 
-void AsmPrinter::emitXRayCustomRegionData() {
+void AsmPrinter::emitXRayCustomRegionData(MCSection *CustomRegionsSection) {
   // First, emit name strings so they can be referenced from custom region info
   // data. These strings cannot be stored in-line with custom region info data
   // as this needs to have equal size for all regions.
-  MCSymbol *CustomRegionNamesStart =
-      OutContext.createLinkerPrivateSymbol("xray_custom_region_names_start");
-  OutStreamer->emitLabel(CustomRegionNamesStart);
 
   // record all names index-based
   SmallVector<const MCSymbol *> RegionNames;
   RegionNames.reserve(CustomRegionInfos.size());
+
+  // emit names of custom regions into .data section (no separate section
+  // needed)
+  MCSection *DataSection = OutContext.getObjectFileInfo()->getDataSection();
+  OutStreamer->switchSection(DataSection);
+
+  MCSymbol *CustomRegionNamesStart =
+      OutContext.createTempSymbol("xray_custom_region_names_start");
+  OutStreamer->emitLabel(CustomRegionNamesStart);
 
   for (const auto &CustomRegion : CustomRegionInfos) {
     MCSymbol *Dot = OutContext.createTempSymbol();
@@ -5165,6 +5185,7 @@ void AsmPrinter::emitXRayCustomRegionData() {
 
     // emit null-terminated string
     OutStreamer->emitBytes(RegionName);
+    OutStreamer->emitInt8(0); // terminator
     // remember reference to string's start
     RegionNames.push_back(Dot);
   }
@@ -5172,6 +5193,9 @@ void AsmPrinter::emitXRayCustomRegionData() {
   MCSymbol *CustomRegionNamesEnd =
       OutContext.createTempSymbol("xray_custom_region_names_end");
   OutStreamer->emitLabel(CustomRegionNamesEnd);
+
+  // custom region infos are emitted into separated section for runtime lookup
+  OutStreamer->switchSection(CustomRegionsSection);
 
   MCSymbol *CustomRegionInfosStart =
       OutContext.createLinkerPrivateSymbol("xray_custom_region_infos_start");
@@ -5192,15 +5216,18 @@ void AsmPrinter::emitXRayCustomRegionData() {
             MCSymbolRefExpr::create(Dot, OutContext), OutContext),
         MAI->getCodePointerSize());
 
-    // 1 byte for custom region kind
-    char Kind = static_cast<char>(CustomRegion.getKind());
-    OutStreamer->emitBinaryData(StringRef(&Kind, 1));
-    // TODO alignment ?!
+    // 1 word for custom region kind
+    // extending the "kind" to word size causes one entry to be aligned properly
+    OutStreamer->emitIntValue(CustomRegion.getKind(),
+                              MAI->getCodePointerSize());
   }
 
   MCSymbol *CustomRegionInfosEnd =
       OutContext.createTempSymbol("xray_custom_region_infos_end");
   OutStreamer->emitLabel(CustomRegionInfosEnd);
+
+  // may be called multiple times
+  CustomRegionInfos.clear();
 }
 
 void AsmPrinter::recordSled(MCSymbol *Sled, const MachineInstr &MI,
