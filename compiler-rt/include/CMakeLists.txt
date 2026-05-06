@@ -39,6 +39,7 @@ endif(COMPILER_RT_BUILD_MEMPROF)
 
 if (COMPILER_RT_BUILD_XRAY)
   set(XRAY_HEADERS
+    xray/xray_custom_regions.h
     xray/xray_interface.h
     xray/xray_log_interface.h
     xray/xray_records.h

@@ -3,6 +3,7 @@
 # XRay runtime library implementation files.
 set(XRAY_SOURCES
   xray_buffer_queue.cpp
+  xray_custom_regions.cpp
   xray_init.cpp
   xray_flags.cpp
   xray_interface.cpp
