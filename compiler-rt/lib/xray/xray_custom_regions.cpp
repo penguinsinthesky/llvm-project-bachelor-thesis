@@ -2,8 +2,6 @@
 
 #include "sanitizer_common/sanitizer_common.h"
 
-#include <cstddef>
-
 using __sanitizer::Report;
 
 extern "C" {
@@ -37,7 +35,6 @@ extern const XRayCustomRegionEntry __start_xray_custom_regions[]
     __attribute__((weak));
 extern const XRayCustomRegionEntry __stop_xray_custom_regions[]
     __attribute__((weak));
-// TODO maybe divide by sizeof(entry)
 const static uint32_t NUM_ENTRIES =
     __stop_xray_custom_regions - __start_xray_custom_regions;
 
