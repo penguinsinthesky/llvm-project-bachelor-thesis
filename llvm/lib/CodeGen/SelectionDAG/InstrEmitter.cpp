@@ -1338,7 +1338,8 @@ EmitSpecialNode(SDNode *Node, bool IsClone, bool IsCloned,
     break;
   }
   case ISD::PATCHABLE_CUSTOM_REGION_ENTER: {
-    EmitCustomRegionProbeNode(Node, TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER);
+    EmitCustomRegionProbeNode(Node,
+                              TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER);
     break;
   }
   case ISD::PATCHABLE_CUSTOM_REGION_EXIT: {
@@ -1479,14 +1480,15 @@ EmitSpecialNode(SDNode *Node, bool IsClone, bool IsCloned,
 
 void InstrEmitter::EmitCustomRegionProbeNode(const SDNode *Node,
                                              const unsigned MIOpcode) {
-  assert((MIOpcode == TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER
-    || MIOpcode == TargetOpcode::PATCHABLE_CUSTOM_REGION_EXIT)
-    && "Illegal target opcode for XRay custom region probes");
+  assert((MIOpcode == TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER ||
+          MIOpcode == TargetOpcode::PATCHABLE_CUSTOM_REGION_EXIT) &&
+         "Illegal target opcode for XRay custom region probes");
 
-  const MDNode *RegionMD = cast<MDNodeSDNode>(Node->getOperand(1).getNode())->getMD();
+  const MDNode *RegionMD =
+      cast<MDNodeSDNode>(Node->getOperand(1).getNode())->getMD();
 
   BuildMI(*MBB, InsertPos, Node->getDebugLoc(), TII->get(MIOpcode))
-    .addMetadata(RegionMD); // add metadata as single operand
+      .addMetadata(RegionMD); // add metadata as single operand
 }
 
 /// InstrEmitter - Construct an InstrEmitter and set it to start inserting

@@ -3695,21 +3695,21 @@ void SelectionDAGBuilder::UpdateSplitBlock(MachineBasicBlock *First,
     if (BTB.Parent == First)
       BTB.Parent = Last;
 }
-void SelectionDAGBuilder::LowerXRayCustomRegionProbe(const CallBase &Call,
-                                                     const SDLoc sdl,
-                                                     const unsigned ISDNodeType) {
+void SelectionDAGBuilder::LowerXRayCustomRegionProbe(
+    const CallBase &Call, const SDLoc sdl, const unsigned ISDNodeType) {
   assert((ISDNodeType == ISD::PATCHABLE_CUSTOM_REGION_ENTER ||
-    ISDNodeType == ISD::PATCHABLE_CUSTOM_REGION_EXIT)
-    && "Illegal ISD NodeType for lowering XRay custom regions probes");
+          ISDNodeType == ISD::PATCHABLE_CUSTOM_REGION_EXIT) &&
+         "Illegal ISD NodeType for lowering XRay custom regions probes");
 
   // TODO check target arch
-  const MDNode *RegionMD = cast<MDNode>(cast<MetadataAsValue>(Call.getArgOperand(0))->getMetadata());
+  const MDNode *RegionMD =
+      cast<MDNode>(cast<MetadataAsValue>(Call.getArgOperand(0))->getMetadata());
 
   // add chain to make sure this instruction is after all previous instructions
   const SDValue Chain = getRoot();
   const SDValue RegionMDValue = DAG.getMDNode(RegionMD);
 
-  const SmallVector<SDValue, 2> Ops {Chain, RegionMDValue}; // metadata last!
+  const SmallVector<SDValue, 2> Ops{Chain, RegionMDValue}; // metadata last!
   const SDValue V = DAG.getNode(ISDNodeType, sdl, MVT::Other, Ops);
 
   DAG.setRoot(V); // update root node

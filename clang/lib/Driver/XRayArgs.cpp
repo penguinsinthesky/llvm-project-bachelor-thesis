@@ -63,7 +63,8 @@ XRayArgs::XRayArgs(const ToolChain &TC, const ArgList &Args) {
         << XRayInstrument->getSpelling() << Triple.str();
   }
 
-  if (Args.hasFlag(options::OPT_fxray_instrument_inlined, options::OPT_fno_xray_instrument_inlined, false)) {
+  if (Args.hasFlag(options::OPT_fxray_instrument_inlined,
+                   options::OPT_fno_xray_instrument_inlined, false)) {
     XRayInstrumentInlined = true;
   }
 
