@@ -5104,6 +5104,12 @@ void AsmPrinter::emitXRayTable() {
       OutContext.createLinkerPrivateSymbol("xray_sleds_start");
   OutStreamer->switchSection(InstMap);
   OutStreamer->emitLabel(SledsStart);
+
+  // append sled entries for custom regions after all other entries
+  for (auto [_RegionInfo, RegionSleds] : CustomRegionInfos.values()) {
+    Sleds.insert(Sleds.end(), RegionSleds.begin(), RegionSleds.end());
+  }
+
   for (const auto &Sled : Sleds) {
     MCSymbol *Dot = Ctx.createTempSymbol();
     OutStreamer->emitLabel(Dot);
@@ -5169,17 +5175,17 @@ void AsmPrinter::emitXRayCustomRegionData(MCSection *CustomRegionsSection) {
       OutContext.createTempSymbol("xray_custom_region_names_start");
   OutStreamer->emitLabel(CustomRegionNamesStart);
 
-  for (const auto &CustomRegion : CustomRegionInfos) {
+  for (const auto &[RegionInfo, _Sleds] : CustomRegionInfos.values()) {
     MCSymbol *Dot = OutContext.createTempSymbol();
     OutStreamer->emitLabel(Dot);
 
     StringRef RegionName;
-    switch (CustomRegion.getKind()) {
+    switch (RegionInfo.getKind()) {
     case xray::INLINED_FUNCTION:
-      RegionName = CustomRegion.getInlinedFunctionInfo().OriginalFunctionName;
+      RegionName = RegionInfo.getInlinedFunctionInfo().OriginalFunctionName;
       break;
     case xray::USER_PLACED:
-      RegionName = CustomRegion.getUserPlacedRegionInfo().RegionName;
+      RegionName = RegionInfo.getUserPlacedRegionInfo().RegionName;
       break;
     }
 
@@ -5202,7 +5208,7 @@ void AsmPrinter::emitXRayCustomRegionData(MCSection *CustomRegionsSection) {
   OutStreamer->emitLabel(CustomRegionInfosStart);
 
   uint32_t RegionIndex = 0;
-  for (const auto &CustomRegion : CustomRegionInfos) {
+  for (const auto &[RegionInfo, _Sleds] : CustomRegionInfos.values()) {
     MCSymbol *Dot = OutContext.createTempSymbol();
     OutStreamer->emitLabel(Dot);
 
@@ -5218,8 +5224,7 @@ void AsmPrinter::emitXRayCustomRegionData(MCSection *CustomRegionsSection) {
 
     // 1 word for custom region kind
     // extending the "kind" to word size causes one entry to be aligned properly
-    OutStreamer->emitIntValue(CustomRegion.getKind(),
-                              MAI.getCodePointerSize());
+    OutStreamer->emitIntValue(RegionInfo.getKind(), MAI.getCodePointerSize());
   }
 
   MCSymbol *CustomRegionInfosEnd =
@@ -5243,10 +5248,35 @@ void AsmPrinter::recordSled(MCSymbol *Sled, const MachineInstr &MI,
                                        AlwaysInstrument, &F, Version});
 }
 
-uint32_t
-AsmPrinter::recordCustomRegionInfo(const xray::XRayCustomRegionInfo &Info) {
-  CustomRegionInfos.push_back(Info);
-  return CustomRegionInfos.size() - 1;
+void AsmPrinter::recordCustomRegionSled(MCSymbol *Sled, const MachineInstr &MI,
+                                        SledKind Kind, uint8_t Version) {
+  const Metadata *RegionMD = MI.getOperand(0).getMetadata();
+
+  const Function &F = MI.getMF()->getFunction();
+  auto Attr = F.getFnAttribute("function-instrument");
+  bool AlwaysInstrument =
+      Attr.isStringAttribute() && Attr.getValueAsString() == "xray-always";
+
+  const auto FunctionEntry = XRayFunctionEntry{
+      Sled, CurrentFnSym, Kind, AlwaysInstrument, &F, Version};
+
+  if (const auto ExistingRegion = CustomRegionInfos.find(RegionMD);
+      ExistingRegion != CustomRegionInfos.end()) {
+    auto &RegionSleds = ExistingRegion->second.Sleds;
+    if (Kind == SledKind::CUSTOM_REGION_ENTER) {
+      // make sure all entry sleds come first
+      // this vector is tiny, so inserting in the front shouldn't hurt
+      RegionSleds.insert(RegionSleds.begin(), FunctionEntry);
+    } else {
+      // make sure all exit sleds are after the entry sleds
+      RegionSleds.push_back(FunctionEntry);
+    }
+  } else {
+    const xray::XRayCustomRegionInfo RegionInfo =
+        xray::XRayCustomRegionInfo::fromMetadata(RegionMD);
+    CustomRegionInfos.insert(std::make_pair(
+        RegionMD, XRayCustomRegion{RegionInfo, {FunctionEntry}}));
+  }
 }
 
 void AsmPrinter::emitPatchableFunctionEntries() {

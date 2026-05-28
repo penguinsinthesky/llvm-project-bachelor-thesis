@@ -425,15 +425,21 @@ public:
     LLVM_ABI void emit(int, MCStreamer *) const;
   };
 
+  struct XRayCustomRegion {
+    xray::XRayCustomRegionInfo RegionInfo;
+    SmallVector<XRayFunctionEntry, 2> Sleds;
+  };
+
   // All the sleds to be emitted.
   SmallVector<XRayFunctionEntry, 4> Sleds;
-  SmallVector<xray::XRayCustomRegionInfo, 4> CustomRegionInfos;
+  SmallDenseMap<const Metadata *, XRayCustomRegion, 2> CustomRegionInfos;
 
   // Helper function to record a given XRay sled.
   void recordSled(MCSymbol *Sled, const MachineInstr &MI, SledKind Kind,
                   uint8_t Version = 0);
 
-  uint32_t recordCustomRegionInfo(const xray::XRayCustomRegionInfo &Info);
+  void recordCustomRegionSled(MCSymbol *Sled, const MachineInstr &MI,
+                              SledKind Kind, uint8_t Version = 0);
 
   /// Emit a table with all XRay instrumentation points.
   void emitXRayTable();

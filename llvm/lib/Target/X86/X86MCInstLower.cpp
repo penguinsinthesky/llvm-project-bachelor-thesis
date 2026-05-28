@@ -1309,10 +1309,6 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
          "SledKind of custom region probe must be CUSTOM_REGION_ENTER or "
          "CUSTOM_REGION_EXIT");
 
-  const Metadata *RegionMD = MI.getOperand(0).getMetadata();
-  const xray::XRayCustomRegionInfo RegionInfo =
-      xray::XRayCustomRegionInfo::fromMetadata(RegionMD);
-
   // do not allow automatic padding as the exact number of bytes matters here
   NoAutoPaddingScope NoPadScope(*OutStreamer);
 
@@ -1348,13 +1344,11 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
   EmitAndCountInstruction(MCInstBuilder(X86::PUSH64r).addReg(X86::EDI));
   EmitAndCountInstruction(MCInstBuilder(X86::PUSH64r).addReg(X86::ESI));
 
-  const uint32_t RegionID = recordCustomRegionInfo(RegionInfo);
-
   // put region ID and sled kind into registers as "arguments" as per calling
   // conv
   EmitAndCountInstruction(MCInstBuilder(X86::MOV32ri)
                               .addReg(X86::EDI)
-                              .addImm(RegionID)); // store region id in %edi
+                              .addImm(42)); // store region id in %edi
   EmitAndCountInstruction(
       MCInstBuilder(X86::MOV32ri)
           .addReg(X86::ESI)
@@ -1375,8 +1369,8 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
 
   OutStreamer->AddComment("xray custom region end.");
 
-  // record sled with appropriate sled kind
-  recordSled(CurSled, MI, SK, 2);
+  // record so sled entry & custom region info entry will be emitted
+  recordCustomRegionSled(CurSled, MI, SK);
 }
 
 void X86AsmPrinter::LowerPATCHABLE_FUNCTION_ENTER(const MachineInstr &MI,
