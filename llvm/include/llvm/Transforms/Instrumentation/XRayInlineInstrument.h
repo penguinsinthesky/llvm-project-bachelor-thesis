@@ -16,7 +16,7 @@ public:
 private:
   static bool shouldInstrument(const Function &F);
 
-  void insertInstructions(Function &F) const;
+  void encloseInCustomRegion(Function &F);
 };
 
 class XRayPostInlinePurgePass : public PassInfoMixin<XRayPostInlinePurgePass> {

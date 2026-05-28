@@ -20,12 +20,13 @@ XRayPreInlineInstrumentPass::run(Module &M,
       continue;
     }
 
-    insertInstructions(F);
+    encloseInCustomRegion(F);
     Modified = true;
   }
 
   return Modified ? PreservedAnalyses::none() : PreservedAnalyses::all();
 }
+
 bool XRayPreInlineInstrumentPass::shouldInstrument(const Function &F) {
   if (F.isDeclaration()) {
     // never instrument declarations
@@ -51,7 +52,7 @@ bool XRayPreInlineInstrumentPass::shouldInstrument(const Function &F) {
   return true;
 }
 
-void XRayPreInlineInstrumentPass::insertInstructions(Function &F) const {
+void XRayPreInlineInstrumentPass::encloseInCustomRegion(Function &F) {
   LLVMContext &Ctx = F.getContext();
 
   const xray::XRayCustomRegionInfo RegionInfo =
