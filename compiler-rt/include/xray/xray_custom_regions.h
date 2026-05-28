@@ -9,8 +9,8 @@ extern "C" {
 
 // synchronize with llvm::xray::CustomRegionKind !
 enum XRayCustomRegionKind {
-  INLINED_FUNCTION = 1,
-  USER_PLACED = 2,
+  INLINED_FUNCTION = 0,
+  USER_PLACED = 1,
 
   /// May represent invalid region IDs
   INVALID = -1

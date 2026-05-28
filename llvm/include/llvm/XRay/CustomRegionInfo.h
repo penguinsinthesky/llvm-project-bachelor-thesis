@@ -8,7 +8,7 @@
 
 namespace llvm::xray {
 
-enum CustomRegionKind : uint8_t { INLINED_FUNCTION = 1, USER_PLACED = 2 };
+enum CustomRegionKind : uint8_t { INLINED_FUNCTION = 0, USER_PLACED = 1 };
 
 struct UserPlacedRegionInfo {
   StringRef RegionName;
