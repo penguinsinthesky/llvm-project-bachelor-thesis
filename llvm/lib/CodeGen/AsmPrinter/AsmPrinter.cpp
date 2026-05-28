@@ -5214,12 +5214,12 @@ void AsmPrinter::emitXRayCustomRegionData(MCSection *CustomRegionsSection) {
         MCBinaryExpr::createSub(
             MCSymbolRefExpr::create(NameAddress, OutContext),
             MCSymbolRefExpr::create(Dot, OutContext), OutContext),
-        MAI->getCodePointerSize());
+        MAI.getCodePointerSize());
 
     // 1 word for custom region kind
     // extending the "kind" to word size causes one entry to be aligned properly
     OutStreamer->emitIntValue(CustomRegion.getKind(),
-                              MAI->getCodePointerSize());
+                              MAI.getCodePointerSize());
   }
 
   MCSymbol *CustomRegionInfosEnd =
