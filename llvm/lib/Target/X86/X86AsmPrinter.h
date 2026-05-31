@@ -122,7 +122,7 @@ private:
   void LowerPATCHABLE_TYPED_EVENT_CALL(const MachineInstr &MI,
                                        X86MCInstLower &MCIL);
   void LowerCustomRegionProbe(const MachineInstr &MI, SledKind SK,
-                              X86MCInstLower &MCIL);
+                              const X86MCInstLower &MCIL, StringRef Trampoline);
 
   void LowerFENTRY_CALL(const MachineInstr &MI, X86MCInstLower &MCIL);
 

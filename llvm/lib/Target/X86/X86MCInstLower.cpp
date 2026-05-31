@@ -1303,7 +1303,8 @@ void X86AsmPrinter::LowerPATCHABLE_TYPED_EVENT_CALL(const MachineInstr &MI,
 
 void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
                                            const SledKind SK,
-                                           X86MCInstLower &MCIL) {
+                                           const X86MCInstLower &MCIL,
+                                           const StringRef Trampoline) {
   assert((SK == SledKind::CUSTOM_REGION_ENTER ||
           SK == SledKind::CUSTOM_REGION_EXIT) &&
          "SledKind of custom region probe must be CUSTOM_REGION_ENTER or "
@@ -1317,13 +1318,10 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
   //
   //   .p2align 1, ...
   // .Lxray_custom_region_sled_N:
-  //   jmp 19                               // jump across the entire sled
+  //   jmp 12                               // jump across the entire sled
   //   push %edi                            // stash %edi or nop if unused
-  //   push %esi                            // stash %esi or nop if unused
-  //   movl %edi, <region-id>               // pass region ID via %edi
-  //   movl %esi, <sled-kind>               // pass sled kind via %esi
-  //   callq __xray_CustomRegionProbe@plt   // force dependency to symbol
-  //   pop %esi                             // restore %esi or nop if not used
+  //   mov %edi, <region-id>               // pass region ID via %edi
+  //   callq __xray_CustomRegion{Enter, Exit}@plt   // force dependency to symbol
   //   pop %edi                             // restore %edi or nop if not used
   //   <jump here>
   //
@@ -1338,23 +1336,15 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
   // Use a two-byte `jmp`. This version of JMP takes an 8-bit relative offset as
   // an operand (computed as an offset from the jmp instruction).
   // TODO check actual size
-  OutStreamer->emitBytes("\xeb\x13"); // jmp over 19 bytes of the sled
+  OutStreamer->emitBytes("\xeb\x0C"); // jmp over 12 bytes of the sled
 
-  // stash the two used registers on the stack
-  EmitAndCountInstruction(MCInstBuilder(X86::PUSH64r).addReg(X86::EDI));
-  EmitAndCountInstruction(MCInstBuilder(X86::PUSH64r).addReg(X86::ESI));
+  // stash the full %rdi on the stack
+  EmitAndCountInstruction(MCInstBuilder(X86::PUSH64r).addReg(X86::RDI));
 
-  // put region ID and sled kind into registers as "arguments" as per calling
-  // conv
-  EmitAndCountInstruction(MCInstBuilder(X86::MOV32ri)
-                              .addReg(X86::EDI)
-                              .addImm(42)); // store region id in %edi
-  EmitAndCountInstruction(
-      MCInstBuilder(X86::MOV32ri)
-          .addReg(X86::ESI)
-          .addImm(static_cast<int64_t>(SK))); // store sled kind in %esi
+  // this 5 byte nop will be replaced with a mov <32bit>
+  emitX86Nops(*OutStreamer, 5, Subtarget);
 
-  auto *TSym = OutContext.getOrCreateSymbol("__xray_CustomRegionProbe");
+  auto *TSym = OutContext.getOrCreateSymbol(Trampoline);
   MachineOperand TOp = MachineOperand::CreateMCSymbol(TSym);
   if (isPositionIndependent())
     TOp.setTargetFlags(X86II::MO_PLT);
@@ -1363,9 +1353,8 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
   EmitAndCountInstruction(MCInstBuilder(X86::CALL64pcrel32)
                               .addOperand(MCIL.LowerSymbolOperand(TOp, TSym)));
 
-  // restore the two registers (reverse order!)
-  EmitAndCountInstruction(MCInstBuilder(X86::POP64r).addReg(X86::ESI));
-  EmitAndCountInstruction(MCInstBuilder(X86::POP64r).addReg(X86::EDI));
+  // restore the register (all 64 bits of it)
+  EmitAndCountInstruction(MCInstBuilder(X86::POP64r).addReg(X86::RDI));
 
   OutStreamer->AddComment("xray custom region end.");
 
@@ -2616,10 +2605,10 @@ void X86AsmPrinter::emitInstruction(const MachineInstr *MI) {
     return LowerPATCHABLE_TYPED_EVENT_CALL(*MI, MCInstLowering);
   case TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER:
     return LowerCustomRegionProbe(*MI, SledKind::CUSTOM_REGION_ENTER,
-                                  MCInstLowering);
+                                  MCInstLowering, "__xray_CustomRegionEntry");
   case TargetOpcode::PATCHABLE_CUSTOM_REGION_EXIT:
     return LowerCustomRegionProbe(*MI, SledKind::CUSTOM_REGION_EXIT,
-                                  MCInstLowering);
+                                  MCInstLowering, "__xray_CustomRegionExit");
 
   case X86::MORESTACK_RET:
     EmitAndCountInstruction(MCInstBuilder(getRetOpcode(*Subtarget)));

@@ -318,27 +318,56 @@ LOCAL_LABEL(typedEventCleanup):
 
 //===----------------------------------------------------------------------===//
 
-	.global ASM_SYMBOL(__xray_CustomRegionProbe)
+	.global ASM_SYMBOL(__xray_CustomRegionEntry)
 	.align 16, 0x90
-	ASM_TYPE_FUNCTION(__xray_CustomRegionProbe)
-# LLVM-MCA-BEGIN __xray_CustomRegionProbe
-ASM_SYMBOL(__xray_CustomRegionProbe):
+	ASM_TYPE_FUNCTION(__xray_CustomRegionEntry)
+# LLVM-MCA-BEGIN __xray_CustomRegionEntry
+ASM_SYMBOL(__xray_CustomRegionEntry):
 	CFI_STARTPROC
 	SAVE_REGISTERS
 
-	// We take two arguments to this trampoline, which should be in edi	and esi
-	// already.
 	LOAD_HANDLER_ADDR _ZN6__xray28XRayPatchedCustomRegionProbeE
 	testq %rax,%rax
-	je LOCAL_LABEL(customRegionProbeCleanup)
-
+	je LOCAL_LABEL(customRegionEntryCleanup)
+	
+	// ID already is in %edi
+	// put sled kind into %esi
+    movl $6, %esi
+    
 	callq	*%rax
 
-LOCAL_LABEL(customRegionProbeCleanup):
+LOCAL_LABEL(customRegionEntryCleanup):
 	RESTORE_REGISTERS
 	retq
 # LLVM-MCA-END
-	ASM_SIZE(__xray_CustomRegionProbe)
+	ASM_SIZE(__xray_CustomRegionEntry)
+	CFI_ENDPROC
+
+//===----------------------------------------------------------------------===//
+
+	.global ASM_SYMBOL(__xray_CustomRegionExit)
+	.align 16, 0x90
+	ASM_TYPE_FUNCTION(__xray_CustomRegionExit)
+# LLVM-MCA-BEGIN (__xray_CustomRegionExit)
+ASM_SYMBOL(__xray_CustomRegionExit):
+	CFI_STARTPROC
+	SAVE_REGISTERS
+
+	LOAD_HANDLER_ADDR _ZN6__xray28XRayPatchedCustomRegionProbeE
+	testq %rax,%rax
+	je LOCAL_LABEL(customRegionExitCleanup)
+
+    // ID already is in %edi
+	// put sled kind into %esi
+    movl $7, %esi
+
+	callq	*%rax
+
+LOCAL_LABEL(customRegionExitCleanup):
+	RESTORE_REGISTERS
+	retq
+# LLVM-MCA-END
+	ASM_SIZE(__xray_CustomRegionExit)
 	CFI_ENDPROC
 
 //===----------------------------------------------------------------------===//

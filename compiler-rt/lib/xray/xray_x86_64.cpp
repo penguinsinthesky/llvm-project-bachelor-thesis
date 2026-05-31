@@ -113,7 +113,7 @@ static constexpr uint16_t MovR10Seq = 0xba41;
 static constexpr uint16_t Jmp9Seq = 0x09eb;
 static constexpr uint16_t Jmp20Seq = 0x14eb;
 static constexpr uint16_t Jmp15Seq = 0x0feb;
-static constexpr uint16_t Jmp19Seq = 0x13eb;
+static constexpr uint16_t Jmp12Seq = 0x0ceb;
 static constexpr uint8_t JmpOpCode = 0xe9;
 static constexpr uint8_t RetOpCode = 0xc3;
 static constexpr uint16_t NopwSeq = 0x9066;
@@ -318,7 +318,7 @@ static bool patchCustomRegionProbe(const bool Enable, const XRaySledEntry &Sled)
   // Here we do the dance of replacing the following sled:
   //
   // xray_custom_region_sled_n:
-  //   jmp +19          // 2 bytes
+  //   jmp +12          // 2 bytes
   //   ...
   //
   // With the following:
@@ -327,7 +327,7 @@ static bool patchCustomRegionProbe(const bool Enable, const XRaySledEntry &Sled)
   //   ...
   //
   //
-  // The "unpatch" should just turn the 'nopw' back to a 'jmp +19'.
+  // The "unpatch" should just turn the 'nopw' back to a 'jmp +12'.
   const uint64_t Address = Sled.address();
   if (Enable) {
     std::atomic_store_explicit(
@@ -335,7 +335,7 @@ static bool patchCustomRegionProbe(const bool Enable, const XRaySledEntry &Sled)
         std::memory_order_release);
   } else {
     std::atomic_store_explicit(
-        reinterpret_cast<std::atomic<uint16_t> *>(Address), Jmp19Seq,
+        reinterpret_cast<std::atomic<uint16_t> *>(Address), Jmp12Seq,
         std::memory_order_release);
   }
   return false; // TODO why return false?
