@@ -110,6 +110,7 @@ uint64_t getTSCFrequency() XRAY_NEVER_INSTRUMENT {
 
 static constexpr uint8_t CallOpCode = 0xe8;
 static constexpr uint16_t MovR10Seq = 0xba41;
+static constexpr uint16_t MovEdiOpcode = 0xbf;
 static constexpr uint16_t Jmp9Seq = 0x09eb;
 static constexpr uint16_t Jmp20Seq = 0x14eb;
 static constexpr uint16_t Jmp15Seq = 0x0feb;
@@ -313,23 +314,32 @@ bool patchTypedEvent(const bool Enable, const uint32_t FuncId,
   return false;
 }
 
-static bool patchCustomRegionProbe(const bool Enable, const XRaySledEntry &Sled)
-    XRAY_NEVER_INSTRUMENT {
+static bool
+patchCustomRegionProbe(const bool Enable, const XRaySledEntry &Sled,
+                       const uint32_t FuncId) XRAY_NEVER_INSTRUMENT {
   // Here we do the dance of replacing the following sled:
   //
   // xray_custom_region_sled_n:
   //   jmp +12          // 2 bytes
-  //   ...
+  //   push %edi        // 1 byte
+  //   nopw             // 5 bytes
+  //   callq <trampoline>
+  //   pop %edi         // 1 byte
   //
-  // With the following:
+  // Patching will replace the jmp with a nop and the 5-byte nop with a mov:
   //
-  //   nopw             // 2 bytes*
+  //   nopw            // 2 bytes
+  //   push %edi       // 1 byte
+  //   mov %esi, <func-id> // 5 bytes
   //   ...
   //
   //
   // The "unpatch" should just turn the 'nopw' back to a 'jmp +12'.
+
   const uint64_t Address = Sled.address();
   if (Enable) {
+    *reinterpret_cast<uint8_t *>(Address + 3) = MovEdiOpcode;
+    *reinterpret_cast<uint32_t *>(Address + 4) = FuncId;
     std::atomic_store_explicit(
         reinterpret_cast<std::atomic<uint16_t> *>(Address), NopwSeq,
         std::memory_order_release);
@@ -344,13 +354,13 @@ static bool patchCustomRegionProbe(const bool Enable, const XRaySledEntry &Sled)
 bool patchCustomRegionEntry(
     const bool Enable, const uint32_t FuncId, const XRaySledEntry &Sled,
     const XRayTrampolines &Trampolines) XRAY_NEVER_INSTRUMENT {
-  return patchCustomRegionProbe(Enable, Sled);
+  return patchCustomRegionProbe(Enable, Sled, FuncId);
 }
 
 bool patchCustomRegionExit(
     const bool Enable, const uint32_t FuncId, const XRaySledEntry &Sled,
     const XRayTrampolines &Trampolines) XRAY_NEVER_INSTRUMENT {
-  return patchCustomRegionProbe(Enable, Sled);
+  return patchCustomRegionProbe(Enable, Sled, FuncId);
 }
 
 #if !SANITIZER_FUCHSIA

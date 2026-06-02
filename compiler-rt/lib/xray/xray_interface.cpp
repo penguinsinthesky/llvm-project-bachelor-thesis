@@ -210,24 +210,17 @@ bool patchSled(const XRaySledEntry &Sled, bool Enable, int32_t FuncId,
 const XRayFunctionSledIndex
 findFunctionSleds(int32_t FuncId,
                   const XRaySledMap &InstrMap) XRAY_NEVER_INSTRUMENT {
-  int32_t CurFn = 0;
-  uint64_t LastFnAddr = 0;
   XRayFunctionSledIndex Index = {nullptr, 0};
 
-  for (std::size_t I = 0; I < InstrMap.Entries && CurFn <= FuncId; I++) {
-    const auto &Sled = InstrMap.Sleds[I];
-    const auto Function = Sled.function();
-    if (Function != LastFnAddr) {
-      CurFn++;
-      LastFnAddr = Function;
-    }
-
-    if (CurFn == FuncId) {
-      if (Index.Begin == nullptr)
-        Index.Begin = &Sled;
-      Index.Size = &Sled - Index.Begin + 1;
-    }
-  }
+  enumerate_functions(InstrMap,
+                      [FuncId, &Index](const uint32_t CurrentFuncId,
+                                       const size_t NumSleds,
+                                       const XRaySledEntry *FunctionSleds) {
+                        if (static_cast<int32_t>(CurrentFuncId) == FuncId) {
+                          Index.Begin = FunctionSleds;
+                          Index.Size = NumSleds;
+                        }
+                      });
 
   return Index;
 }
@@ -326,9 +319,6 @@ XRayPatchingStatus controlPatchingObjectUnchecked(bool Enable, int32_t ObjId) {
     return XRayPatchingStatus::FAILED;
   }
 
-  uint32_t FuncId = 1;
-  uint64_t CurFun = 0;
-
   // First we want to find the bounds for which we have instrumentation points,
   // and try to get as few calls to mprotect(...) as possible. We're assuming
   // that all the sleds for the instrumentation map are contiguous as a single
@@ -366,18 +356,18 @@ XRayPatchingStatus controlPatchingObjectUnchecked(bool Enable, int32_t ObjId) {
     return XRayPatchingStatus::FAILED;
   }
 
-  for (std::size_t I = 0; I < InstrMap.Entries; ++I) {
-    auto &Sled = InstrMap.Sleds[I];
-    auto F = Sled.function();
-    if (CurFun == 0)
-      CurFun = F;
-    if (F != CurFun) {
-      ++FuncId;
-      CurFun = F;
+  enumerate_functions(InstrMap, [=](const uint32_t FuncId,
+                                    const size_t SledCount,
+                                    const XRaySledEntry *FunctionSleds) {
+    printf("Patching Func %u with %lu sleds starting at%p\n", FuncId, SledCount,
+           FunctionSleds);
+    for (size_t I = 0; I < SledCount; ++I) {
+      const auto &Sled = FunctionSleds[I];
+      const auto PackedId = __xray::MakePackedId(FuncId, ObjId);
+      patchSled(Sled, Enable, PackedId, InstrMap.Trampolines);
     }
-    auto PackedId = __xray::MakePackedId(FuncId, ObjId);
-    patchSled(Sled, Enable, PackedId, InstrMap.Trampolines);
-  }
+  });
+
   atomic_store(&XRayPatching, false, memory_order_release);
   return XRayPatchingStatus::SUCCESS;
 }

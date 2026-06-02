@@ -18,6 +18,7 @@
 #include "sanitizer_common/sanitizer_common.h"
 #include "xray/xray_interface.h"
 #include "xray_allocator.h"
+#include "xray_custom_regions_internal.h"
 #include "xray_defs.h"
 #include "xray_flags.h"
 #include "xray_interface_internal.h"
@@ -86,16 +87,11 @@ __xray_register_sleds(const XRaySledEntry *SledsBegin,
     SledMap.Functions = FnIndexEnd - FnIndexBegin;
   } else {
     size_t CountFunctions = 0;
-    uint64_t LastFnAddr = 0;
+    enumerate_functions(
+        SledMap, [&CountFunctions](
+                     const uint32_t FuncId, const size_t SledCount,
+                     const XRaySledEntry *FunctionSleds) { ++CountFunctions; });
 
-    for (std::size_t I = 0; I < SledMap.Entries; I++) {
-      const auto &Sled = SledMap.Sleds[I];
-      const auto Function = Sled.function();
-      if (Function != LastFnAddr) {
-        CountFunctions++;
-        LastFnAddr = Function;
-      }
-    }
     SledMap.SledsIndex = nullptr;
     SledMap.Functions = CountFunctions;
   }
@@ -153,6 +149,12 @@ void __xray_init() XRAY_NEVER_INSTRUMENT {
   // The executable should always get ID 0.
   if (MainBinaryId != 0) {
     Report("Registering XRay sleds failed.\n");
+    return;
+  }
+
+  // TODO support DSOs for custom regions
+  if (!__xray_register_custom_regions(XRayInstrMaps[0])) {
+    Report("Registering  XRay custom regions failed\n");
     return;
   }
 

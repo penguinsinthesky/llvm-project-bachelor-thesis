@@ -14,6 +14,7 @@
 #ifndef XRAY_INTERFACE_INTERNAL_H
 #define XRAY_INTERFACE_INTERNAL_H
 
+#include "sanitizer_common/sanitizer_common.h"
 #include "sanitizer_common/sanitizer_platform.h"
 #include "xray/xray_interface.h"
 #include <cstddef>
@@ -154,6 +155,52 @@ bool patchCustomRegionEntry(bool Enable, uint32_t FuncId,
 bool patchCustomRegionExit(bool Enable, uint32_t FuncId,
                            const XRaySledEntry &Sled,
                            const XRayTrampolines &Trampolines);
+
+template <class H>
+bool enumerate_functions(const XRaySledMap &InstrMap, H Handler) {
+  size_t FuncId = 1;
+
+  size_t I = 0;
+  while (I < InstrMap.Entries) {
+    const XRaySledEntry *StartSled = &InstrMap.Sleds[I++];
+    size_t NumSledsInFunction = 1;
+
+    if (StartSled->Kind == CUSTOM_REGION_ENTRY) {
+      // consume all additional entry sleds
+      while (I < InstrMap.Entries &&
+             InstrMap.Sleds[I].Kind == CUSTOM_REGION_ENTRY) {
+        ++I;
+        ++NumSledsInFunction;
+      }
+
+      if (I >= InstrMap.Entries ||
+          InstrMap.Sleds[I].Kind != CUSTOM_REGION_EXIT) {
+        __sanitizer::Report("There must be at least one exit sled\n");
+        return false;
+      }
+
+      // consume all additional exit sleds
+      while (I < InstrMap.Entries &&
+             InstrMap.Sleds[I].Kind == CUSTOM_REGION_EXIT) {
+        ++I;
+        ++NumSledsInFunction;
+      }
+    } else {
+      const auto Function = StartSled->function();
+
+      // consume all non-custom region sleds from the same function
+      while (I < InstrMap.Entries && InstrMap.Sleds[I].function() == Function &&
+             InstrMap.Sleds[I].Kind != CUSTOM_REGION_ENTRY &&
+             InstrMap.Sleds[I].Kind != CUSTOM_REGION_EXIT) {
+        ++I;
+        ++NumSledsInFunction;
+      }
+    }
+
+    Handler(FuncId++, NumSledsInFunction, StartSled);
+  }
+  return true;
+}
 
 } // namespace __xray
 
