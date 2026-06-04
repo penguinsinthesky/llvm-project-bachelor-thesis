@@ -16,6 +16,7 @@
 
 #include "sanitizer_common/sanitizer_common.h"
 #include "sanitizer_common/sanitizer_platform.h"
+#include "xray/xray_defs.h"
 #include "xray/xray_interface.h"
 #include <cstdint>
 #include <utility>
@@ -157,7 +158,8 @@ bool patchCustomRegionExit(bool Enable, uint32_t FuncId,
 
 template <class H, typename = std::enable_if_t<
                        std::is_invocable_v<H, uint32_t, XRayFunctionSledIndex>>>
-bool enumerate_functions(const XRaySledMap &InstrMap, H Handler) {
+bool enumerate_functions(const XRaySledMap &InstrMap,
+                         H Handler) XRAY_NEVER_INSTRUMENT {
   size_t FuncId = 1;
 
   size_t I = 0;
