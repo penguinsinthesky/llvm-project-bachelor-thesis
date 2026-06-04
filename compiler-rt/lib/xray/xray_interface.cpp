@@ -212,12 +212,13 @@ findFunctionSleds(int32_t FuncId,
                   const XRaySledMap &InstrMap) XRAY_NEVER_INSTRUMENT {
   XRayFunctionSledIndex Index = {nullptr, 0};
 
-  enumerate_functions(InstrMap, [FuncId, &Index](const uint32_t CurrentFuncId,
-                                       const XRayFunctionSledIndex FunctionSleds) {
-    if (static_cast<int32_t>(CurrentFuncId) == FuncId) {
-      Index = FunctionSleds;
-    }
-  });
+  enumerate_functions(
+      InstrMap, [FuncId, &Index](const uint32_t CurrentFuncId,
+                                 const XRayFunctionSledIndex FunctionSleds) {
+        if (static_cast<int32_t>(CurrentFuncId) == FuncId) {
+          Index = FunctionSleds;
+        }
+      });
 
   return Index;
 }

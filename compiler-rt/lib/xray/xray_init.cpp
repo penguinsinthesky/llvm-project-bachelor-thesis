@@ -88,9 +88,10 @@ __xray_register_sleds(const XRaySledEntry *SledsBegin,
   } else {
     size_t CountFunctions = 0;
     enumerate_functions(
-        SledMap, [&CountFunctions](
-                     const uint32_t FuncId,
-                     const XRayFunctionSledIndex FunctionSleds) { ++CountFunctions; });
+        SledMap, [&CountFunctions](const uint32_t FuncId,
+                                   const XRayFunctionSledIndex FunctionSleds) {
+          ++CountFunctions;
+        });
 
     SledMap.SledsIndex = nullptr;
     SledMap.Functions = CountFunctions;

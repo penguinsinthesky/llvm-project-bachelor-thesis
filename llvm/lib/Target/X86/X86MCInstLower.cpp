@@ -1321,9 +1321,9 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
   //   jmp 12                               // jump across the entire sled
   //   push %edi                            // stash %edi or nop if unused
   //   mov %edi, <region-id>               // pass region ID via %edi
-  //   callq __xray_CustomRegion{Enter, Exit}@plt   // force dependency to symbol
-  //   pop %edi                             // restore %edi or nop if not used
-  //   <jump here>
+  //   callq __xray_CustomRegion{Enter, Exit}@plt   // force dependency to
+  //   symbol pop %edi                             // restore %edi or nop if not
+  //   used <jump here>
   //
   // Patching will replace the jump with a nop so the trampoline call gets
   // executed. Unpatching simply puts the jmp back in place.
