@@ -212,15 +212,12 @@ findFunctionSleds(int32_t FuncId,
                   const XRaySledMap &InstrMap) XRAY_NEVER_INSTRUMENT {
   XRayFunctionSledIndex Index = {nullptr, 0};
 
-  enumerate_functions(InstrMap,
-                      [FuncId, &Index](const uint32_t CurrentFuncId,
-                                       const size_t NumSleds,
-                                       const XRaySledEntry *FunctionSleds) {
-                        if (static_cast<int32_t>(CurrentFuncId) == FuncId) {
-                          Index.Begin = FunctionSleds;
-                          Index.Size = NumSleds;
-                        }
-                      });
+  enumerate_functions(InstrMap, [FuncId, &Index](const uint32_t CurrentFuncId,
+                                       const XRayFunctionSledIndex FunctionSleds) {
+    if (static_cast<int32_t>(CurrentFuncId) == FuncId) {
+      Index = FunctionSleds;
+    }
+  });
 
   return Index;
 }
@@ -357,12 +354,9 @@ XRayPatchingStatus controlPatchingObjectUnchecked(bool Enable, int32_t ObjId) {
   }
 
   enumerate_functions(InstrMap, [=](const uint32_t FuncId,
-                                    const size_t SledCount,
-                                    const XRaySledEntry *FunctionSleds) {
-    printf("Patching Func %u with %lu sleds starting at%p\n", FuncId, SledCount,
-           FunctionSleds);
-    for (size_t I = 0; I < SledCount; ++I) {
-      const auto &Sled = FunctionSleds[I];
+                                    const XRayFunctionSledIndex FunctionSleds) {
+    for (size_t I = 0; I < FunctionSleds.Size; ++I) {
+      const auto &Sled = FunctionSleds.Begin[I];
       const auto PackedId = __xray::MakePackedId(FuncId, ObjId);
       patchSled(Sled, Enable, PackedId, InstrMap.Trampolines);
     }

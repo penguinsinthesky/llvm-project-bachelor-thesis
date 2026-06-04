@@ -30,12 +30,6 @@ extern const XRaySledToCustomRegionMapping __stop_xray_sled_to_custom_region[]
 SpinMutex XRayFuncIdToRegionMutex;
 DenseMap<uint32_t, const XRayCustomRegionEntry *> XRayFuncIdToRegion;
 
-static const XRayCustomRegionEntry *
-get_custom_region_entry_by_func_id(const uint32_t FuncId) {
-  const XRayCustomRegionEntry *Entry = XRayFuncIdToRegion[FuncId];
-  return Entry;
-}
-
 bool __xray_register_custom_regions(const XRaySledMap &InstrMap)
     XRAY_NEVER_INSTRUMENT {
   DenseMap<size_t, const XRayCustomRegionEntry *> SledToRegion;
@@ -76,9 +70,9 @@ bool __xray_register_custom_regions(const XRaySledMap &InstrMap)
     }
   } else {
     enumerate_functions(InstrMap, [&](const uint32_t FuncId,
-                                      const size_t SledCount,
-                                      const XRaySledEntry *FunctionSleds) {
-      const auto &FirstSled = FunctionSleds[0];
+                                      const XRayFunctionSledIndex
+                                          FunctionSleds) {
+      const auto &FirstSled = FunctionSleds.Begin[0];
       FuncIdToRegion[FuncId] =
           SledToRegion[FirstSled.address()]; // take region info of first sled
     });
