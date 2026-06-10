@@ -5,7 +5,8 @@
 #include "sanitizer_common/sanitizer_dense_map.h"
 #include "xray/xray_defs.h"
 #include <cstdio>
-#include <new> // TODO not really sure why using DenseMap needs this
+// TODO not really sure why using DenseMap needs this
+#include <new>
 
 using __sanitizer::DenseMap;
 using __sanitizer::SpinMutex;
