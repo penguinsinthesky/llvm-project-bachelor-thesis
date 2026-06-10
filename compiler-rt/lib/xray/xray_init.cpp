@@ -142,6 +142,8 @@ void __xray_init() XRAY_NEVER_INSTRUMENT {
 
   // Pre-allocation takes up approx. 5kB for XRayMaxObjects=64.
   XRayInstrMaps = allocateBuffer<XRaySledMap>(XRayMaxObjects);
+  // also pre-allocate buffer for custom region id mappings
+  __xray_allocate_custom_region_buffer();
 
   int MainBinaryId =
       __xray_register_sleds(__start_xray_instr_map, __stop_xray_instr_map,
@@ -154,7 +156,8 @@ void __xray_init() XRAY_NEVER_INSTRUMENT {
   }
 
   // TODO support DSOs for custom regions
-  if (!__xray_register_custom_regions(XRayInstrMaps[0])) {
+  if (!__xray_register_custom_regions(XRayInstrMaps[MainBinaryId],
+                                      MainBinaryId)) {
     Report("Registering  XRay custom regions failed\n");
     return;
   }
@@ -190,6 +193,10 @@ SANITIZER_INTERFACE_ATTRIBUTE int32_t __xray_register_dso(
   // Register sleds in global map.
   int ObjId = __xray_register_sleds(SledsBegin, SledsEnd, FnIndexBegin,
                                     FnIndexEnd, true, Trampolines);
+
+  if (ObjId >= 0) {
+    __xray_register_custom_regions(XRayInstrMaps[ObjId], ObjId);
+  }
 
 #ifndef XRAY_NO_PREINIT
   if (ObjId >= 0 && flags()->patch_premain)

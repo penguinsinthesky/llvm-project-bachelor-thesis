@@ -159,7 +159,7 @@ bool patchCustomRegionExit(bool Enable, uint32_t FuncId,
                            const XRayTrampolines &Trampolines);
 
 template <class H, typename = std::enable_if_t<
-                       std::is_invocable_v<H, uint32_t, XRayFunctionSledIndex>>>
+                       std::is_invocable_v<H, int32_t, XRayFunctionSledIndex>>>
 bool enumerate_functions(const XRaySledMap &InstrMap,
                          H Handler) XRAY_NEVER_INSTRUMENT {
   size_t FuncId = 1;

@@ -63,7 +63,9 @@ struct XRaySledToCustomRegionMapping {
   }
 };
 
-bool __xray_register_custom_regions(const __xray::XRaySledMap &InstrMap);
+void __xray_allocate_custom_region_buffer();
+
+bool __xray_register_custom_regions(const __xray::XRaySledMap &InstrMap, int32_t ObjId);
 }
 
 #endif // LLVM_XRAY_CUSTOM_REGIONS_INTERNAL_H

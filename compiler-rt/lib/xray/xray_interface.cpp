@@ -351,7 +351,7 @@ XRayPatchingStatus controlPatchingObjectUnchecked(bool Enable, int32_t ObjId) {
     return XRayPatchingStatus::FAILED;
   }
 
-  enumerate_functions(InstrMap, [=](const uint32_t FuncId,
+  enumerate_functions(InstrMap, [&](const uint32_t FuncId,
                                     const XRayFunctionSledIndex FunctionSleds) {
     for (size_t I = 0; I < FunctionSleds.Size; ++I) {
       const auto &Sled = FunctionSleds.Begin[I];
