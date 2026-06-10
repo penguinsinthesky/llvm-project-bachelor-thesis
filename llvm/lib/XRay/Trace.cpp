@@ -98,9 +98,11 @@ static Error loadNaiveFormatLog(StringRef Data, bool IsLittleEndian,
 
       switch (Type) {
       case 0:
+      case 6: // treat regular functions custom regions the same
         Record.Type = RecordTypes::ENTER;
         break;
       case 1:
+      case 7: // treat regular functions custom regions the same
         Record.Type = RecordTypes::EXIT;
         break;
       case 2:

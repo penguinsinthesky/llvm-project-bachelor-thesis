@@ -37,7 +37,16 @@ loadInstrumentationMap(StringRef Filename);
 struct SledEntry {
   /// Each entry here represents the kinds of supported instrumentation map
   /// entries.
-  enum class FunctionKinds { ENTRY, EXIT, TAIL, LOG_ARGS_ENTER, CUSTOM_EVENT };
+  enum class FunctionKinds {
+    ENTRY,
+    EXIT,
+    TAIL,
+    LOG_ARGS_ENTER,
+    CUSTOM_EVENT,
+    TYPED_EVENT = 5, // only inserted for completeness' sake, no idea why it wasn't there before
+    CUSTOM_REGION_ENTER = 6,
+    CUSTOM_REGION_EXIT = 7,
+  };
 
   /// The address of the sled.
   uint64_t Address;
@@ -113,6 +122,10 @@ struct yaml::ScalarEnumerationTraits<xray::SledEntry::FunctionKinds> {
                 xray::SledEntry::FunctionKinds::LOG_ARGS_ENTER);
     IO.enumCase(Kind, "custom-event",
                 xray::SledEntry::FunctionKinds::CUSTOM_EVENT);
+    IO.enumCase(Kind, "custom-region-enter",
+                xray::SledEntry::FunctionKinds::CUSTOM_REGION_ENTER);
+    IO.enumCase(Kind, "custom-region-exit",
+                xray::SledEntry::FunctionKinds::CUSTOM_REGION_EXIT);
   }
 };
 

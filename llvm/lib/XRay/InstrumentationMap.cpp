@@ -163,9 +163,19 @@ loadObj(StringRef Filename, object::OwningBinary<object::ObjectFile> &ObjFile,
     return Address;
   };
 
+  enum class ParseState {
+    INIT,
+    FUNCTION,
+    CUSTOM_REGION_ENTERS,
+    CUSTOM_REGION_EXITS,
+  };
+
   const int WordSize = Is32Bit ? 4 : 8;
   int32_t FuncId = 1;
   uint64_t CurFn = 0;
+
+  auto State = ParseState::INIT;
+
   for (; C != Contents.bytes_end(); C += ELFSledEntrySize) {
     DataExtractor Extractor(ArrayRef<uint8_t>(C, ELFSledEntrySize), true);
     Sleds.push_back({});
@@ -183,10 +193,15 @@ loadObj(StringRef Filename, object::OwningBinary<object::ObjectFile> &ObjFile,
       Entry.Function = RelocateOrElse(FuncOff, Extractor.getU64(&OffsetPtr));
     auto Kind = Extractor.getU8(&OffsetPtr);
     static constexpr SledEntry::FunctionKinds Kinds[] = {
-        SledEntry::FunctionKinds::ENTRY, SledEntry::FunctionKinds::EXIT,
+        SledEntry::FunctionKinds::ENTRY,
+        SledEntry::FunctionKinds::EXIT,
         SledEntry::FunctionKinds::TAIL,
         SledEntry::FunctionKinds::LOG_ARGS_ENTER,
-        SledEntry::FunctionKinds::CUSTOM_EVENT};
+        SledEntry::FunctionKinds::CUSTOM_EVENT,
+        SledEntry::FunctionKinds::TYPED_EVENT, // only added for indexing to work
+        SledEntry::FunctionKinds::CUSTOM_REGION_ENTER,
+        SledEntry::FunctionKinds::CUSTOM_REGION_EXIT,
+    };
     if (Kind >= std::size(Kinds))
       return errorCodeToError(
           std::make_error_code(std::errc::executable_format_error));
@@ -198,21 +213,78 @@ loadObj(StringRef Filename, object::OwningBinary<object::ObjectFile> &ObjFile,
       Entry.Function += C - Contents.bytes_begin() + WordSize + Address;
     }
 
-    // We do replicate the function id generation scheme implemented in the
-    // XRay runtime.
-    // FIXME: Figure out how to keep this consistent with the XRay runtime.
-    if (CurFn == 0) {
-      CurFn = Entry.Function;
-      FunctionAddresses[FuncId] = Entry.Function;
-      FunctionIds[Entry.Function] = FuncId;
+    // FIXME: generify to share with runtime
+
+    // state machine logic
+    switch (State) {
+    case ParseState::INIT: {
+      if (Entry.Kind == SledEntry::FunctionKinds::CUSTOM_REGION_ENTER) {
+        // first function will be a custom region
+        State = ParseState::CUSTOM_REGION_ENTERS;
+      } else if (Entry.Kind == SledEntry::FunctionKinds::CUSTOM_REGION_EXIT) {
+        // custom regions must start with their entry sled -> error
+        return make_error<StringError>("First sled must not be a custom region's exit", std::make_error_code(std::errc::executable_format_error));
+      } else {
+        // first function will be a normal function
+        CurFn = Entry.Function;
+        State = ParseState::FUNCTION;
+      }
+      break;
     }
-    if (Entry.Function != CurFn) {
-      ++FuncId;
-      CurFn = Entry.Function;
-      FunctionAddresses[FuncId] = Entry.Function;
-      FunctionIds[Entry.Function] = FuncId;
+    case ParseState::FUNCTION: {
+      if (Entry.Kind == SledEntry::FunctionKinds::CUSTOM_REGION_ENTER) {
+        // this function's sleds are over, new custom region starts here
+        ++FuncId;
+        State = ParseState::CUSTOM_REGION_ENTERS;
+      } else if (Entry.Kind == SledEntry::FunctionKinds::CUSTOM_REGION_EXIT) {
+        // custom regions must start with their entry sled -> error
+        return make_error<StringError>("Custom region's exit sled before its entry sled", std::make_error_code(std::errc::executable_format_error));
+      } else {
+        if (Entry.Function != CurFn) {
+          // this function's sleds are over, another function starts here
+          CurFn = Entry.Function;
+          ++FuncId;
+        } else {
+          // still in the same function, keep going
+        }
+        // state remains FUNCTION
+      }
+      break;
     }
+    case ParseState::CUSTOM_REGION_ENTERS: {
+      if (Entry.Kind == SledEntry::FunctionKinds::CUSTOM_REGION_ENTER) {
+        // still consuming this region's entry sleds, stay in this state
+      } else if (Entry.Kind == SledEntry::FunctionKinds::CUSTOM_REGION_EXIT) {
+        // now come this region's exit sleds
+        State = ParseState::CUSTOM_REGION_EXITS;
+      } else {
+        // there must be at least one exit sled -> error
+        return errorCodeToError(
+            std::make_error_code(std::errc::executable_format_error));
+      }
+      break;
+    }
+    case ParseState::CUSTOM_REGION_EXITS: {
+      if (Entry.Kind == SledEntry::FunctionKinds::CUSTOM_REGION_ENTER) {
+        // this region's exit sleds are over, new custom region starts here
+        ++FuncId;
+        State = ParseState::CUSTOM_REGION_ENTERS;
+      } else if (Entry.Kind == SledEntry::FunctionKinds::CUSTOM_REGION_EXIT) {
+        // still consuming this region's exit sleds, stay in this state
+      } else {
+        // this region's exit sleds are over, new regular function starts here
+        CurFn = Entry.Function;
+        ++FuncId;
+        State = ParseState::FUNCTION;
+      }
+      break;
+    }
+    }
+
+    FunctionAddresses[FuncId] = Entry.Function;
+    FunctionIds[Entry.Function] = FuncId;
   }
+
   return Error::success();
 }
 
