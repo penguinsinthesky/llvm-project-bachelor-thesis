@@ -174,7 +174,8 @@ void InMemoryRawLog(int32_t FuncId, XRayEntryType Type,
 
   switch (Type) {
   case XRayEntryType::ENTRY:
-  case XRayEntryType::LOG_ARGS_ENTRY: {
+  case XRayEntryType::LOG_ARGS_ENTRY:
+  case XRayEntryType::CUSTOM_REGION_ENTRY: {
     // Short circuit if we've reached the maximum depth of the stack.
     if (TLD.StackEntries++ >= TLD.StackSize)
       return;
@@ -192,6 +193,7 @@ void InMemoryRawLog(int32_t FuncId, XRayEntryType Type,
     break;
   }
   case XRayEntryType::EXIT:
+  case XRayEntryType::CUSTOM_REGION_EXIT:
   case XRayEntryType::TAIL: {
     if (TLD.StackEntries == 0)
       break;
