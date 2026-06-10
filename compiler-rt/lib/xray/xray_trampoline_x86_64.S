@@ -326,7 +326,7 @@ ASM_SYMBOL(__xray_CustomRegionEntry):
 	CFI_STARTPROC
 	SAVE_REGISTERS
 
-	LOAD_HANDLER_ADDR _ZN6__xray28XRayPatchedCustomRegionProbeE
+	LOAD_HANDLER_ADDR _ZN6__xray19XRayPatchedFunctionE
 	testq %rax,%rax
 	je LOCAL_LABEL(customRegionEntryCleanup)
 	
@@ -353,7 +353,7 @@ ASM_SYMBOL(__xray_CustomRegionExit):
 	CFI_STARTPROC
 	SAVE_REGISTERS
 
-	LOAD_HANDLER_ADDR _ZN6__xray28XRayPatchedCustomRegionProbeE
+	LOAD_HANDLER_ADDR _ZN6__xray19XRayPatchedFunctionE
 	testq %rax,%rax
 	je LOCAL_LABEL(customRegionExitCleanup)
 
