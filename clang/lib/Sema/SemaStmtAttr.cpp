@@ -749,6 +749,23 @@ static Attr *handleAtomicAttr(Sema &S, Stmt *St, const ParsedAttr &AL,
       AtomicAttr(S.Context, AL, Options.data(), Options.size());
 }
 
+static Attr *handleXRayInstrumentLoopAttr(Sema &S, Stmt *St,
+                                          const ParsedAttr &A) {
+  assert(clang::isa<ForStmt>(St) &&
+         "xray_instrument_loop attribute can only be applied to for-loops.");
+
+  if (!A.checkExactlyNumArgs(S, 1)) {
+    return nullptr;
+  }
+
+  StringRef RegionName;
+  if (!S.checkStringLiteralArgumentAttr(A, 0, RegionName)) {
+    return nullptr;
+  }
+
+  return ::new (S.Context) XRayInstrumentLoopAttr(S.Context, A, RegionName);
+}
+
 static Attr *ProcessStmtAttribute(Sema &S, Stmt *St, const ParsedAttr &A,
                                   SourceRange Range) {
   if (A.isInvalid() || A.getKind() == ParsedAttr::IgnoredAttribute)
@@ -816,6 +833,8 @@ static Attr *ProcessStmtAttribute(Sema &S, Stmt *St, const ParsedAttr &A,
     return S.CreateAnnotationAttr(A);
   case ParsedAttr::AT_Atomic:
     return handleAtomicAttr(S, St, A, Range);
+  case ParsedAttr::AT_XRayInstrumentLoop:
+    return handleXRayInstrumentLoopAttr(S, St, A);
   default:
     if (Attr *AT = nullptr; A.getInfo().handleStmtAttribute(S, St, A, AT) !=
                             ParsedAttrInfo::NotHandled) {

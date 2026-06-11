@@ -428,6 +428,14 @@ SmallVector<Metadata *, 4> clang::CodeGen::LoopInfo::createMetadata(
     LoopProperties.push_back(MDNode::get(Ctx, Vals));
   }
 
+  // Setting clang::xray_instrument_loop attribute
+  if (Attrs.XRayRegionName.has_value()) {
+    const StringRef RegionName = Attrs.XRayRegionName.value();
+    Metadata *Vals[] = {MDString::get(Ctx, "llvm.loop.xray.instrument"),
+                        MDString::get(Ctx, RegionName)};
+    LoopProperties.push_back(MDNode::get(Ctx, Vals));
+  }
+
   llvm::append_range(LoopProperties, AdditionalLoopProperties);
   return createFullUnrollMetadata(Attrs, LoopProperties, HasUserTransforms);
 }
@@ -441,7 +449,7 @@ LoopAttributes::LoopAttributes(bool IsParallel)
       UnrollCount(0), UnrollAndJamCount(0),
       DistributeEnable(LoopAttributes::Unspecified), PipelineDisabled(false),
       LICMDisabled(false), PipelineInitiationInterval(0), CodeAlign(0),
-      MustProgress(false) {}
+      MustProgress(false), XRayRegionName(std::nullopt) {}
 
 void LoopAttributes::clear() {
   IsParallel = false;
@@ -460,6 +468,7 @@ void LoopAttributes::clear() {
   PipelineInitiationInterval = 0;
   CodeAlign = 0;
   MustProgress = false;
+  XRayRegionName = std::nullopt;
 }
 
 clang::CodeGen::LoopInfo::LoopInfo(BasicBlock *Header,
@@ -816,6 +825,11 @@ void LoopInfoStack::push(BasicBlock *Header, clang::ASTContext &Ctx,
   }
 
   setMustProgress(MustProgress);
+
+  if (const auto *XRayInstrumentLoop =
+          getSpecificAttr<XRayInstrumentLoopAttr>(Attrs)) {
+    setXRayRegionName(XRayInstrumentLoop->getRegionName());
+  }
 
   if (CGOpts.OptimizationLevel > 0)
     // Disable unrolling for the loop, if unrolling is disabled (via

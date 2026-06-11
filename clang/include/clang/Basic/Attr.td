@@ -986,6 +986,13 @@ def XRayLogArgs : InheritableAttr {
   let Documentation = [XRayDocs];
 }
 
+def XRayInstrumentLoop : StmtAttr {
+    let Spellings = [Clang<"xray_instrument_loop">];
+    let Subjects = SubjectList<[ForStmt], ErrorDiag, "'for' loops">;
+    let Args = [StringArgument<"RegionName">];
+    let Documentation = [XRayDocs];
+}
+
 def PatchableFunctionEntry
     : InheritableAttr,
       TargetSpecificAttr<

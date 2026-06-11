@@ -7102,8 +7102,11 @@ otherwise.
 `__attribute__((xray_log_args(N)))` or `[[clang::xray_log_args(N)]]` is
 used to preserve N function arguments for the logging function. Currently,
 only N==1 is supported.
+
+``__attribute__((xray_instrument_loop))`` or ``[[clang::xray_instrument_loop]]``
+can be applied to loops to mark them for instrumentation.
   }];
-}
+} // TODO loops
 
 def PatchableFunctionEntryDocs : Documentation {
   let Category = DocCatFunction;

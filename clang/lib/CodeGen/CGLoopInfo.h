@@ -87,6 +87,10 @@ struct LoopAttributes {
 
   /// Value for whether the loop is required to make progress.
   bool MustProgress;
+
+  /// If this holds a value, the loop should be instrumented by XRay with the
+  /// contained region name.
+  std::optional<StringRef> XRayRegionName;
 };
 
 /// Information used when generating a structured loop.
@@ -305,6 +309,9 @@ public:
 
   /// Set no progress for the next loop pushed.
   void setMustProgress(bool P) { StagedAttrs.MustProgress = P; }
+
+  /// Set name of XRay region for this loop
+  void setXRayRegionName(StringRef RegionName) { StagedAttrs.XRayRegionName = std::make_optional(RegionName); }
 
   /// Returns true if there is LoopInfo on the stack.
   bool hasInfo() const { return !Active.empty(); }
