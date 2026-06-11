@@ -7,11 +7,9 @@
 namespace llvm {
 
 class XRayPreInlineInstrumentPass
-    : public PassInfoMixin<XRayPreInlineInstrumentPass> {
+    : public RequiredPassInfoMixin<XRayPreInlineInstrumentPass> {
 public:
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
-
-  static bool isRequired() { return true; }
 
 private:
   static bool shouldInstrument(const Function &F);
@@ -19,11 +17,10 @@ private:
   void encloseInCustomRegion(Function &F);
 };
 
-class XRayPostInlinePurgePass : public PassInfoMixin<XRayPostInlinePurgePass> {
+class XRayPostInlinePurgePass
+    : public RequiredPassInfoMixin<XRayPostInlinePurgePass> {
 public:
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
-
-  static bool isRequired() { return true; }
 };
 
 } // namespace llvm
