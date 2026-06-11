@@ -1,7 +1,6 @@
 #ifndef LLVM_XRAY_PRE_INLINE_INSTRUMENT_H
 #define LLVM_XRAY_PRE_INLINE_INSTRUMENT_H
 
-#include "llvm/Analysis/CGSCCPassManager.h"
 #include "llvm/IR/PassManager.h"
 
 namespace llvm {
