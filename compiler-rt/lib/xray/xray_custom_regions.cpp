@@ -115,6 +115,8 @@ const char *__xray_custom_region_kind_string(const XRayCustomRegionKind kind)
     return "INLINED_FUNCTION";
   case USER_PLACED:
     return "USER_PLACED";
+  case LOOP:
+    return "LOOP";
   case INVALID:
     return "INVALID";
   }
