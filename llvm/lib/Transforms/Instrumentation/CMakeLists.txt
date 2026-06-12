@@ -45,5 +45,4 @@ add_llvm_component_library(LLVMInstrumentation
   TargetParser
   TransformUtils
   ProfileData
-  XRay # TODO check if adding more dependencies is allowed/wanted
   )

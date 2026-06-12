@@ -52,7 +52,6 @@
 #include "llvm/Transforms/CFGuard.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizerCommon.h"
-#include "llvm/XRay/CustomRegionInfo.h"
 #include <string>
 
 using namespace llvm;

@@ -29,7 +29,6 @@
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/ErrorHandling.h"
-#include "llvm/XRay/CustomRegionInfo.h"
 #include <cstdint>
 #include <memory>
 #include <utility>

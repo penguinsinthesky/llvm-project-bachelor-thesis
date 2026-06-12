@@ -1,7 +1,9 @@
 #ifndef LLVM_XRAYCUSTOMREGIONINSERTER_H
 #define LLVM_XRAYCUSTOMREGIONINSERTER_H
 
-#include "llvm/XRay/CustomRegionInfo.h"
+// Region Kinds defined in compiler-rt are the single source of truth
+// TODO check if there is a better way of including this
+#include "../../../../compiler-rt/include/xray/xray_custom_region_kind.h"
 
 namespace llvm {
 
@@ -9,7 +11,7 @@ class XRayCustomRegionInfo {
 public:
   static XRayCustomRegionInfo fromIntrinsicCall(const CallInst &Call);
 
-  xray::CustomRegionKind getRegionKind() const;
+  XRayCustomRegionKind getRegionKind() const;
 
   StringRef getRegionName() const;
 
@@ -36,7 +38,7 @@ public:
   constexpr static StringRef SectionName = "xray_custom_regions";
 
 private:
-  static GlobalVariable *createRegionInfoGlobal(xray::CustomRegionKind Kind,
+  static GlobalVariable *createRegionInfoGlobal(XRayCustomRegionKind,
                                                 const Twine &RegionName,
                                                 Module &M);
 

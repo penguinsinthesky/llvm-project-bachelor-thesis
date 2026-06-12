@@ -6,7 +6,6 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Transforms/Utils/EscapeEnumerator.h"
 #include "llvm/Transforms/Utils/XRayCustomRegionInstrumentation.h"
-#include "llvm/XRay/CustomRegionInfo.h"
 
 namespace llvm {
 
@@ -84,8 +83,7 @@ struct RemoveOwnIntrinsicVisitor : InstVisitor<RemoveOwnIntrinsicVisitor> {
 
     const auto RegionInfo = XRayCustomRegionInfo::fromIntrinsicCall(I);
 
-    if (RegionInfo.getRegionKind() !=
-        xray::CustomRegionKind::INLINED_FUNCTION) {
+    if (RegionInfo.getRegionKind() != XRayCustomRegionKind::INLINED_FUNCTION) {
       // do not touch probes that are not meant for inlining
       return;
     }

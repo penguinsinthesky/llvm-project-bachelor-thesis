@@ -1,6 +1,8 @@
 #ifndef LLVM_XRAY_CUSTOM_REGIONS_H
 #define LLVM_XRAY_CUSTOM_REGIONS_H
 
+#include "xray_custom_region_kind.h"
+
 #ifdef __cplusplus
 #include <cstddef>
 #include <cstdint>
@@ -12,15 +14,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-// synchronize with llvm::xray::CustomRegionKind !
-enum XRayCustomRegionKind {
-  INLINED_FUNCTION = 0,
-  USER_PLACED = 1,
-
-  /// May represent invalid region IDs
-  INVALID = -1
-};
 
 /**
  * Returns a string representation of XRayCustomRegionKind as a string

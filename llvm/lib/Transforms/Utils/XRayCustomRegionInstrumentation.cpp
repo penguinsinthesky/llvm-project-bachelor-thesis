@@ -17,9 +17,9 @@ XRayCustomRegionInfo::fromIntrinsicCall(const CallInst &Call) {
   return XRayCustomRegionInfo(Global);
 }
 
-xray::CustomRegionKind XRayCustomRegionInfo::getRegionKind() const {
+XRayCustomRegionKind XRayCustomRegionInfo::getRegionKind() const {
   const auto *Op = cast<ConstantInt>(regionInfo()->getOperand(0));
-  return static_cast<xray::CustomRegionKind>(Op->getZExtValue());
+  return static_cast<XRayCustomRegionKind>(Op->getZExtValue());
 }
 
 StringRef XRayCustomRegionInfo::getRegionName() const {
@@ -32,7 +32,7 @@ StringRef XRayCustomRegionInfo::getRegionName() const {
 
 const Function *XRayCustomRegionInfo::getOriginalFunction() const {
   assert(
-      getRegionKind() == xray::CustomRegionKind::INLINED_FUNCTION &&
+      getRegionKind() == XRayCustomRegionKind::INLINED_FUNCTION &&
       "Only custom regions from inlined functions have an original function");
 
   SmallVector<MDNode *, 1> MDs;
@@ -60,7 +60,7 @@ const ConstantStruct *XRayCustomRegionInfo::regionInfo() const {
 XRayCustomRegionInserter
 XRayCustomRegionInserter::forInlinedFunction(Function &OriginalFunction) {
   auto *RegionInfoGlobal = createRegionInfoGlobal(
-      xray::CustomRegionKind::INLINED_FUNCTION,
+      XRayCustomRegionKind::INLINED_FUNCTION,
       "<inlined>" + OriginalFunction.getName(), *OriginalFunction.getParent());
 
   auto *OriginalFunctionMD =
@@ -81,7 +81,7 @@ CallInst *XRayCustomRegionInserter::insertExit(IRBuilder<> &Builder) {
                                  {RegionInfoGlobal});
 }
 GlobalVariable *XRayCustomRegionInserter::createRegionInfoGlobal(
-    const xray::CustomRegionKind Kind, const Twine &RegionName, Module &M) {
+    const XRayCustomRegionKind Kind, const Twine &RegionName, Module &M) {
   LLVMContext &Ctx = M.getContext();
 
   StructType *StructTy = getRegionInfoType(M);

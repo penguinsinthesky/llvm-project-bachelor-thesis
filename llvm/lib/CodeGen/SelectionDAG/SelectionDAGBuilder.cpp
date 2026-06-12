@@ -102,7 +102,6 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/TargetParser/Triple.h"
 #include "llvm/Transforms/Utils/Local.h"
-#include "llvm/XRay/CustomRegionInfo.h"
 
 #include <cstddef>
 #include <limits>
