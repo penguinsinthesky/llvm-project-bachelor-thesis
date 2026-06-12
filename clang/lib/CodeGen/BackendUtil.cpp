@@ -89,6 +89,7 @@
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Instrumentation/TypeSanitizer.h"
 #include "llvm/Transforms/Instrumentation/XRayInlineInstrument.h"
+#include "llvm/Transforms/Instrumentation/XRayLoopInstrument.h"
 #include "llvm/Transforms/ObjCARC.h"
 #include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/Scalar/GVN.h"
@@ -1107,21 +1108,30 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
             MPM.addPass(InstrProfilingLoweringPass(*Options, false));
           });
 
-    if (CodeGenOpts.XRayInstrumentFunctions &&
-        CodeGenOpts.XRayInstrumentInlined) {
-      // insert pass before optimizations are done so intrinsic calls will be
-      // inlined along with the function body
-      PB.registerPipelineStartEPCallback(
-          [](ModulePassManager &MPM, OptimizationLevel Level) {
-            MPM.addPass(XRayPreInlineInstrumentPass());
-          });
-
-      // insert "cleanup" pass after inlining
-      PB.registerOptimizerEarlyEPCallback([](ModulePassManager &MPM,
-                                             OptimizationLevel Level,
-                                             ThinOrFullLTOPhase Phase) {
-        MPM.addPass(XRayPostInlinePurgePass());
+    if (CodeGenOpts.XRayInstrumentFunctions) {
+      PB.registerPipelineStartEPCallback([] (ModulePassManager &MPM, OptimizationLevel Level) {
+        FunctionPassManager FPM;
+        FPM.addPass(LoopSimplifyPass());
+        FPM.addPass(XRayLoopInstrumentPass());
+        MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
       });
+
+      if (CodeGenOpts.XRayInstrumentInlined) {
+        // insert pass before optimizations are done so intrinsic calls will be
+        // inlined along with the function body
+        PB.registerPipelineStartEPCallback(
+            [](ModulePassManager &MPM, OptimizationLevel Level) {
+              MPM.addPass(XRayPreInlineInstrumentPass());
+            });
+
+        // insert "cleanup" pass after inlining
+        PB.registerOptimizerEarlyEPCallback([](ModulePassManager &MPM,
+                                               OptimizationLevel Level,
+                                               ThinOrFullLTOPhase Phase) {
+          MPM.addPass(XRayPostInlinePurgePass());
+        });
+      }
+
     }
 
     // TODO: Consider passing the MemoryProfileOutput to the pass builder via
