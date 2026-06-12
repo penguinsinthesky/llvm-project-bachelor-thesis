@@ -71,6 +71,15 @@ XRayCustomRegionInserter::forInlinedFunction(Function &OriginalFunction) {
   return XRayCustomRegionInserter(RegionInfoGlobal);
 }
 
+XRayCustomRegionInserter
+XRayCustomRegionInserter::forLoop(const Loop &Loop, StringRef RegionName) {
+  Function *ParentFunction = Loop.getHeader()->getParent();
+  auto *RegionInfoGlobal = createRegionInfoGlobal(
+      XRayCustomRegionKind::LOOP, RegionName, *ParentFunction->getParent());
+
+  return XRayCustomRegionInserter(RegionInfoGlobal);
+}
+
 CallInst *XRayCustomRegionInserter::insertEnter(IRBuilder<> &Builder) {
   return Builder.CreateIntrinsic(Intrinsic::xray_customregionenter,
                                  {RegionInfoGlobal});

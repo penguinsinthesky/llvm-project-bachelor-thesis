@@ -5,6 +5,8 @@
 // TODO check if there is a better way of including this
 #include "../../../../compiler-rt/include/xray/xray_custom_region_kind.h"
 
+#include "llvm/Analysis/LoopInfo.h"
+
 namespace llvm {
 
 class XRayCustomRegionInfo {
@@ -30,6 +32,9 @@ class XRayCustomRegionInserter {
 public:
   static XRayCustomRegionInserter
   forInlinedFunction(Function &OriginalFunction);
+
+  static XRayCustomRegionInserter forLoop(const Loop &Loop,
+                                          StringRef RegionName);
 
   CallInst *insertEnter(IRBuilder<> &Builder);
 
