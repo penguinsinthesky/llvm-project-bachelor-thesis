@@ -1661,14 +1661,14 @@ def PATCHABLE_TYPED_EVENT_CALL : StandardPseudoInstruction {
 }
 def PATCHABLE_CUSTOM_REGION_ENTER : StandardPseudoInstruction {
   let OutOperandList = (outs);
-  let InOperandList = (ins);
+  let InOperandList = (ins unknown:$region_info);
   let AsmString = "# XRay Custom Region Enter.";
   //let usesCustomInserter = true;
   let hasSideEffects = true;
 }
 def PATCHABLE_CUSTOM_REGION_EXIT : StandardPseudoInstruction {
   let OutOperandList = (outs);
-  let InOperandList = (ins);
+  let InOperandList = (ins unknown:$region_info);
   let AsmString = "# XRay Custom Region Exit.";
   //let usesCustomInserter = true;
   let hasSideEffects = true;

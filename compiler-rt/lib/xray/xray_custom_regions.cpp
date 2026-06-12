@@ -138,7 +138,7 @@ const char *
 __xray_custom_region_get_name(const int32_t region_id) XRAY_NEVER_INSTRUMENT {
   const auto [ObjId, FuncId] = UnpackId(region_id);
   if (const auto *pair = XRayFuncIdToRegion[ObjId].find(FuncId); pair) {
-    return pair->second->getName();
+    return pair->second->Name;
   }
 
   printf("Invalid custom region ID: %u\n", FuncId);

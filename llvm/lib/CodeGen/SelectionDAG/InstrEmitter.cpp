@@ -1484,11 +1484,11 @@ void InstrEmitter::EmitCustomRegionProbeNode(const SDNode *Node,
           MIOpcode == TargetOpcode::PATCHABLE_CUSTOM_REGION_EXIT) &&
          "Illegal target opcode for XRay custom region probes");
 
-  const MDNode *RegionMD =
-      cast<MDNodeSDNode>(Node->getOperand(1).getNode())->getMD();
+  const GlobalAddressSDNode *RegionInfoAddress =
+      cast<GlobalAddressSDNode>(Node->getOperand(0).getNode());
 
   BuildMI(*MBB, InsertPos, Node->getDebugLoc(), TII->get(MIOpcode))
-      .addMetadata(RegionMD); // add metadata as single operand
+      .addGlobalAddress(RegionInfoAddress->getGlobal(), RegionInfoAddress->getOffset()); // add global as single operand
 }
 
 /// InstrEmitter - Construct an InstrEmitter and set it to start inserting

@@ -5,6 +5,7 @@
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Transforms/Utils/EscapeEnumerator.h"
+#include "llvm/Transforms/Utils/XRayCustomRegionInstrumentation.h"
 #include "llvm/XRay/CustomRegionInfo.h"
 
 namespace llvm {
@@ -53,25 +54,18 @@ bool XRayPreInlineInstrumentPass::shouldInstrument(const Function &F) {
 }
 
 void XRayPreInlineInstrumentPass::encloseInCustomRegion(Function &F) {
-  LLVMContext &Ctx = F.getContext();
-
-  const xray::XRayCustomRegionInfo RegionInfo =
-      xray::XRayCustomRegionInfo::inlinedFunction(
-          xray::InlinedFunctionRegionInfo{F.getName(), &F});
-
-  MDNode *RegionMD = RegionInfo.createMetadata(Ctx);
-  Value *MDValue = MetadataAsValue::get(Ctx, RegionMD);
+  auto Inserter = XRayCustomRegionInserter::forInlinedFunction(F);
 
   // prepend region enter intrinsic to entry block
   IRBuilder Builder(&*F.getEntryBlock().begin());
-  Builder.CreateIntrinsic(Intrinsic::xray_customregionenter, {MDValue});
+  Inserter.insertEnter(Builder);
 
   // append region exit intrinsic to every exit block's end
   // (but before terminator instruction)
   EscapeEnumerator Exits(F);
 
   while (IRBuilder<> *ExitBuilder = Exits.Next()) {
-    ExitBuilder->CreateIntrinsic(Intrinsic::xray_customregionexit, {MDValue});
+    Inserter.insertExit(*ExitBuilder);
   }
 }
 
@@ -88,26 +82,18 @@ struct RemoveOwnIntrinsicVisitor : InstVisitor<RemoveOwnIntrinsicVisitor> {
       return;
     }
 
-    const Function *ParentFunction = I.getFunction();
+    const auto RegionInfo = XRayCustomRegionInfo::fromIntrinsicCall(I);
 
-    assert(I.arg_size() == 1 &&
-           "XRay custom region intrinsics must have exactly one argument");
-    const Metadata *MD =
-        cast<MetadataAsValue>(I.getArgOperand(0))->getMetadata();
-
-    const xray::XRayCustomRegionInfo RegionMD =
-        xray::XRayCustomRegionInfo::fromMetadata(MD);
-
-    if (RegionMD.getKind() != xray::CustomRegionKind::INLINED_FUNCTION) {
+    if (RegionInfo.getRegionKind() !=
+        xray::CustomRegionKind::INLINED_FUNCTION) {
       // do not touch probes that are not meant for inlining
       return;
     }
 
-    const std::optional<Function *> OriginalFunction =
-        RegionMD.getInlinedFunctionInfo().OriginalFunction;
+    const Function *ParentFunction = I.getFunction();
+    const Function *OriginalFunction = RegionInfo.getOriginalFunction();
 
-    if (OriginalFunction.has_value() &&
-        OriginalFunction.value() == ParentFunction) {
+    if (OriginalFunction != nullptr && OriginalFunction == ParentFunction) {
       // this call belongs to the function we are already in
       // if the original function does not exist, this instruction cannot be in
       // it
@@ -127,6 +113,8 @@ PreservedAnalyses XRayPostInlinePurgePass::run(Module &M,
   for (auto *I : Visitor.RemovalCandidates) {
     I->eraseFromParent();
   }
+
+  // left over globals will be dealt with by gl
 
   return Visitor.RemovalCandidates.empty() ? PreservedAnalyses::all()
                                            : PreservedAnalyses::none();

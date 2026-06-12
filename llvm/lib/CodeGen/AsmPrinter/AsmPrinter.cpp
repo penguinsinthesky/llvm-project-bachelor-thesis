@@ -5052,7 +5052,6 @@ void AsmPrinter::emitXRayTable() {
   const Function &F = MF->getFunction();
   MCSection *InstMap = nullptr;
   MCSection *FnSledIndex = nullptr;
-  MCSection *CustomRegionsSection = nullptr;
   MCSection *SledToCustomRegionSection = nullptr;
 
   const Triple &TT = TM.getTargetTriple();
@@ -5074,10 +5073,6 @@ void AsmPrinter::emitXRayTable() {
           "xray_fn_idx", ELF::SHT_PROGBITS, Flags, 0, GroupName, F.hasComdat(),
           MCSection::NonUniqueID, LinkedToSym);
     if (!CustomRegionInfos.empty()) {
-      CustomRegionsSection = OutContext.getELFSection(
-          "xray_custom_regions", ELF::SHT_PROGBITS, Flags, 0, GroupName,
-          F.hasComdat(), MCSection::NonUniqueID, LinkedToSym);
-
       SledToCustomRegionSection = OutContext.getELFSection(
           "xray_sled_to_custom_region", ELF::SHT_PROGBITS, Flags, 0, GroupName,
           F.hasComdat(), MCSection::NonUniqueID, LinkedToSym);
@@ -5091,9 +5086,6 @@ void AsmPrinter::emitXRayTable() {
                                                MachO::S_ATTR_LIVE_SUPPORT,
                                                SectionKind::getReadOnly());
     if (!CustomRegionInfos.empty()) {
-      CustomRegionsSection = OutContext.getMachOSection(
-          "__DATA", "xray_custom_regions", MachO::S_ATTR_LIVE_SUPPORT,
-          SectionKind::getReadOnly());
       SledToCustomRegionSection = OutContext.getMachOSection(
           "__DATA", "xray_sled_to_custom_region", MachO::S_ATTR_LIVE_SUPPORT,
           SectionKind::getReadOnly());
@@ -5163,7 +5155,7 @@ void AsmPrinter::emitXRayTable() {
   // emit custom region sleds
   OutStreamer->switchSection(InstMap);
 
-  for (const auto [RegionInfo, RegionSleds] : CustomRegionInfos.values()) {
+  for (const auto &[RegionInfoGlobal, RegionSleds] : CustomRegionInfos) {
     MCSymbol *RegionSledsStart =
         Ctx.createTempSymbol("xray_sleds_start_custom_region");
     OutStreamer->emitLabel(RegionSledsStart);
@@ -5199,96 +5191,21 @@ void AsmPrinter::emitXRayTable() {
 
   // emit custom region information into separate section
 
-  if (CustomRegionsSection != nullptr) {
-    emitXRayCustomRegionData(CustomRegionsSection, SledToCustomRegionSection);
+  if (!CustomRegionInfos.empty()) {
+    emitXRayCustomRegionData(SledToCustomRegionSection);
   }
 
   Sleds.clear();
   CustomRegionInfos.clear();
 }
 
-void AsmPrinter::emitXRayCustomRegionData(
-    MCSection *CustomRegionsSection, MCSection *SledToCustomRegionSection) {
+void AsmPrinter::emitXRayCustomRegionData(MCSection *SledToCustomRegionSection) {
   // First, emit name strings so they can be referenced from custom region info
   // data. These strings cannot be stored in-line with custom region info data
   // as this needs to have equal size for all regions.
 
   auto &Ctx = OutContext;
   const auto WordSizeBytes = MAI.getCodePointerSize();
-
-  // record all names index-based
-  SmallVector<const MCSymbol *> RegionNames;
-  RegionNames.reserve(CustomRegionInfos.size());
-
-  // emit names of custom regions into .data section (no separate section
-  // needed)
-  MCSection *DataSection = Ctx.getObjectFileInfo()->getDataSection();
-  OutStreamer->switchSection(DataSection);
-
-  MCSymbol *CustomRegionNamesStart =
-      Ctx.createTempSymbol("xray_custom_region_names_start");
-  OutStreamer->emitLabel(CustomRegionNamesStart);
-
-  for (const auto &[RegionInfo, _Sleds] : CustomRegionInfos.values()) {
-    MCSymbol *Dot = Ctx.createTempSymbol();
-    OutStreamer->emitLabel(Dot);
-
-    StringRef RegionName;
-    switch (RegionInfo.getKind()) {
-    case xray::INLINED_FUNCTION:
-      RegionName = RegionInfo.getInlinedFunctionInfo().OriginalFunctionName;
-      break;
-    case xray::USER_PLACED:
-      RegionName = RegionInfo.getUserPlacedRegionInfo().RegionName;
-      break;
-    }
-
-    // emit null-terminated string
-    OutStreamer->emitBytes(RegionName);
-    OutStreamer->emitInt8(0); // terminator
-    // remember reference to string's start
-    RegionNames.push_back(Dot);
-  }
-
-  MCSymbol *CustomRegionNamesEnd =
-      Ctx.createTempSymbol("xray_custom_region_names_end");
-  OutStreamer->emitLabel(CustomRegionNamesEnd);
-
-  // custom region infos are emitted into separated section for runtime lookup
-  OutStreamer->switchSection(CustomRegionsSection);
-
-  MCSymbol *CustomRegionInfosStart =
-      Ctx.createLinkerPrivateSymbol("xray_custom_region_infos_start");
-  OutStreamer->emitLabel(CustomRegionInfosStart);
-
-  SmallVector<const MCSymbol *> RegionInfoSymbols;
-  RegionInfoSymbols.reserve(CustomRegionInfos.size());
-
-  uint32_t RegionIndex = 0;
-  for (const auto &[RegionInfo, _Sleds] : CustomRegionInfos.values()) {
-    MCSymbol *Dot = Ctx.createTempSymbol();
-    OutStreamer->emitLabel(Dot);
-
-    // address of region's name (1 entire word size)
-    // This is the offset of the address relative to this custom region info.
-    // Saving the address directly would case problems with relocation
-    const MCSymbol *NameAddress = RegionNames[RegionIndex++];
-
-    OutStreamer->emitValueImpl(
-        MCBinaryExpr::createSub(MCSymbolRefExpr::create(NameAddress, Ctx),
-                                MCSymbolRefExpr::create(Dot, Ctx), Ctx),
-        WordSizeBytes);
-
-    // 1 word for custom region kind
-    // extending the "kind" to word size causes one entry to be aligned properly
-    OutStreamer->emitIntValue(RegionInfo.getKind(), WordSizeBytes);
-
-    RegionInfoSymbols.push_back(Dot);
-  }
-
-  MCSymbol *CustomRegionInfosEnd =
-      Ctx.createTempSymbol("xray_custom_region_infos_end");
-  OutStreamer->emitLabel(CustomRegionInfosEnd);
 
   // emit sled -> region info mappings
 
@@ -5298,11 +5215,9 @@ void AsmPrinter::emitXRayCustomRegionData(
       Ctx.createTempSymbol("xray_sled_to_custom_region_start");
   OutStreamer->emitLabel(SledToCustomRegionStart);
 
-  RegionIndex = 0;
-  for (const auto [RegionInfo, RegionSleds] : CustomRegionInfos.values()) {
-    const MCSymbol *RegionSymbol = RegionInfoSymbols[RegionIndex++];
-
+  for (const auto &[RegionInfoGlobal, RegionSleds] : CustomRegionInfos) {
     for (const auto &SledEntry : RegionSleds) {
+      const MCSymbol *RegionSymbol = getSymbol(RegionInfoGlobal);
       const MCSymbol *Sled = SledEntry.Sled;
 
       MCSymbol *Dot = Ctx.createTempSymbol();
@@ -5343,19 +5258,21 @@ void AsmPrinter::recordSled(MCSymbol *Sled, const MachineInstr &MI,
 
 void AsmPrinter::recordCustomRegionSled(MCSymbol *Sled, const MachineInstr &MI,
                                         SledKind Kind, uint8_t Version) {
-  const Metadata *RegionMD = MI.getOperand(0).getMetadata();
+  const MachineOperand &RegionInfoOp = MI.getOperand(0);
+  const GlobalValue *RegionInfoGlobal = RegionInfoOp.getGlobal();
 
   const Function &F = MI.getMF()->getFunction();
   auto Attr = F.getFnAttribute("function-instrument");
   bool AlwaysInstrument =
       Attr.isStringAttribute() && Attr.getValueAsString() == "xray-always";
 
+  // TODO use global addr as function here?
   const auto FunctionEntry = XRayFunctionEntry{
       Sled, CurrentFnSym, Kind, AlwaysInstrument, &F, Version};
 
-  if (const auto ExistingRegion = CustomRegionInfos.find(RegionMD);
+  if (const auto ExistingRegion = CustomRegionInfos.find(RegionInfoGlobal);
       ExistingRegion != CustomRegionInfos.end()) {
-    auto &RegionSleds = ExistingRegion->second.Sleds;
+    auto &RegionSleds = ExistingRegion->second;
     if (Kind == SledKind::CUSTOM_REGION_ENTER) {
       // make sure all entry sleds come first
       // this vector is tiny, so inserting in the front shouldn't hurt
@@ -5365,10 +5282,8 @@ void AsmPrinter::recordCustomRegionSled(MCSymbol *Sled, const MachineInstr &MI,
       RegionSleds.push_back(FunctionEntry);
     }
   } else {
-    const xray::XRayCustomRegionInfo RegionInfo =
-        xray::XRayCustomRegionInfo::fromMetadata(RegionMD);
     CustomRegionInfos.insert(std::make_pair(
-        RegionMD, XRayCustomRegion{RegionInfo, {FunctionEntry}}));
+        RegionInfoGlobal,  SmallVector<XRayFunctionEntry, 4>{FunctionEntry}));
   }
 }
 

@@ -3701,15 +3701,17 @@ void SelectionDAGBuilder::LowerXRayCustomRegionProbe(
           ISDNodeType == ISD::PATCHABLE_CUSTOM_REGION_EXIT) &&
          "Illegal ISD NodeType for lowering XRay custom regions probes");
 
-  // TODO check target arch
-  const MDNode *RegionMD =
-      cast<MDNode>(cast<MetadataAsValue>(Call.getArgOperand(0))->getMetadata());
+  const auto &Triple = DAG.getTarget().getTargetTriple();
+  if (!Triple.isAArch64(64) && Triple.getArch() != Triple::x86_64)
+    return;
+
+  const auto *const RegionInfoGlobal = cast<GlobalVariable>(Call.getArgOperand(0));
+  const SDValue GlobalNode = DAG.getTargetGlobalAddress(RegionInfoGlobal, sdl, MVT::Other);
 
   // add chain to make sure this instruction is after all previous instructions
   const SDValue Chain = getRoot();
-  const SDValue RegionMDValue = DAG.getMDNode(RegionMD);
 
-  const SmallVector<SDValue, 2> Ops{Chain, RegionMDValue}; // metadata last!
+  const SmallVector<SDValue, 2> Ops{GlobalNode, Chain};
   const SDValue V = DAG.getNode(ISDNodeType, sdl, MVT::Other, Ops);
 
   DAG.setRoot(V); // update root node

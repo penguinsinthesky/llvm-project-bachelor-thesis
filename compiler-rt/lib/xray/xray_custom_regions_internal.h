@@ -17,18 +17,14 @@ struct XRayCustomRegionEntry {
   operator=(XRayCustomRegionEntry &&other) noexcept = delete;
 
 #if SANITIZER_WORDSIZE == 64
-  uint64_t NameOffset;
   uint64_t Kind;
 #elif SANITIZER_WORDSIZE == 32
-  uint32_t NameOffset;
   uint32_t Kind;
 #else
 #error "Unsupported word size."
 #endif
 
-  const char *getName() const XRAY_NEVER_INSTRUMENT {
-    return reinterpret_cast<const char *>(&NameOffset) + NameOffset;
-  }
+  const char *Name;
 };
 
 struct XRaySledToCustomRegionMapping {
@@ -65,7 +61,8 @@ struct XRaySledToCustomRegionMapping {
 
 void __xray_allocate_custom_region_buffer();
 
-bool __xray_register_custom_regions(const __xray::XRaySledMap &InstrMap, int32_t ObjId);
+bool __xray_register_custom_regions(const __xray::XRaySledMap &InstrMap,
+                                    int32_t ObjId);
 }
 
 #endif // LLVM_XRAY_CUSTOM_REGIONS_INTERNAL_H
