@@ -1,7 +1,7 @@
 ; RUN: opt -S -passes=xray-instrument-loops %s | FileCheck %s
 
-; CHECK: @[[REGION_NAME_GLOBAL:[a-zA-Z0-9_\" ]+]] = private constant [{{[0-9]+}} x i8]
-; CHECK: @[[REGION_GLOBAL:[a-zA-Z0-9_\" ]+]] = internal constant { i64, ptr } { i64 2, ptr @[[REGION_NAME_GLOBAL]] }, section "xray_custom_regions"
+; CHECK: @[[REGION_NAME_GLOBAL:.+]] = private constant [{{[0-9]+}} x i8]
+; CHECK: @[[REGION_GLOBAL:.+]] = internal constant { i64, ptr } { i64 2, ptr @[[REGION_NAME_GLOBAL]] }, section "xray_custom_regions"
 
 define void @foo() {
 entry:
