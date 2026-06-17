@@ -1,54 +1,48 @@
 #include "llvm/Transforms/Instrumentation/XRayLoopInstrument.h"
 
 #include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/PostDominators.h"
 #include "llvm/Transforms/Utils/XRayCustomRegionInstrumentation.h"
 
 namespace llvm {
 static void
-findBodyStartBlocks(const Loop &L, const PostDominatorTree &PD,
+findBodyStartBlocks(const Loop &L,
                     SmallVectorImpl<BasicBlock *> &BodyStartBlocks) {
-  const auto *LatchNode = PD.getNode(L.getLoopLatch());
+  BasicBlock *Header = L.getHeader();
 
-  // these are the leaf blocks in the post-dominator tree (which are still in
-  // the loop)
-  SmallVector<const DomTreeNode *, 8> Stack;
-  Stack.push_back(LatchNode);
-  while (!Stack.empty()) {
-    auto *Node = Stack.pop_back_val();
-    auto *Block = Node->getBlock();
+  if (L.isLoopExiting(Header)) {
+    // The header exits the loop and is therefore not part of the body.
+    // This is found with for and while style loops where the header evaluates
+    // the condition. This also applies to one-block loops where the header does
+    // exit the loop but since it is a successor of itself (and contained in the
+    // loop), it will be added here.
 
-    if (Node->isLeaf() && L.contains(Block)) {
-      BodyStartBlocks.push_back(Block);
-      continue;
+    for (auto *Succ : successors(Header)) {
+      if (L.contains(Succ)) {
+        BodyStartBlocks.push_back(Succ);
+      }
     }
-
-    // push all children
-    Stack.append(LatchNode->begin(), LatchNode->end());
+  } else {
+    // The header is part of the body (e.g. for do-while style loops).
+    BodyStartBlocks.push_back(Header);
   }
 }
+
 } // namespace llvm
 
 llvm::PreservedAnalyses
-llvm::XRayLoopInstrumentPass::run(Function &F, FunctionAnalysisManager &FAM) {
-  bool Modified = false;
+llvm::XRayLoopInstrumentPass::run(Loop &L, LoopAnalysisManager &,
+                                  LoopStandardAnalysisResults &, LPMUpdater &) {
 
-  const PostDominatorTree &PD = FAM.getResult<PostDominatorTreeAnalysis>(F);
-  const LoopInfo &LI = FAM.getResult<LoopAnalysis>(F);
-
-  for (const auto *L : LI) {
-    const std::optional<StringRef> RegionName = getRegionName(*L);
-    if (!RegionName.has_value()) {
-      // not annotated
-      continue;
-    }
-
-    instrumentLoop(*L, F, PD, RegionName.value());
-    Modified = true;
+  const std::optional<StringRef> RegionName = getRegionName(L);
+  if (!RegionName.has_value()) {
+    // not annotated
+    return PreservedAnalyses::all();
   }
+  instrumentLoop(L, RegionName.value());
 
-  return Modified ? PreservedAnalyses::none() : PreservedAnalyses::all();
+  return PreservedAnalyses::none();
 }
+
 std::optional<llvm::StringRef>
 llvm::XRayLoopInstrumentPass::getRegionName(const Loop &L) {
   if (const MDNode *ID = L.getLoopID()) {
@@ -72,18 +66,18 @@ llvm::XRayLoopInstrumentPass::getRegionName(const Loop &L) {
   return std::nullopt;
 }
 void llvm::XRayLoopInstrumentPass::instrumentLoop(const Loop &L,
-                                                  const Function &F,
-                                                  const PostDominatorTree &PD,
                                                   const StringRef RegionName) {
   SmallVector<BasicBlock *, 1> BodyStartBlocks;
   SmallVector<BasicBlock *, 2> BodyEndBlocks;
 
-  findBodyStartBlocks(L, PD, BodyStartBlocks);
+  findBodyStartBlocks(L, BodyStartBlocks);
   L.getLoopLatches(BodyEndBlocks);
 
   auto Inserter = XRayCustomRegionInserter::forLoop(L, RegionName);
 
-  IRBuilder Builder(F.getContext());
+  // create builder; initial insert position doesn't matter, will be set
+  // properly
+  IRBuilder Builder(L.getHeader());
 
   for (auto *StartBlock : BodyStartBlocks) {
     // insert enter probe at beginning of the block

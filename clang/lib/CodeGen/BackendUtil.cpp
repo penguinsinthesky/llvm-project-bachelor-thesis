@@ -1112,7 +1112,7 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
       PB.registerPipelineStartEPCallback([] (ModulePassManager &MPM, OptimizationLevel Level) {
         FunctionPassManager FPM;
         FPM.addPass(LoopSimplifyPass());
-        FPM.addPass(XRayLoopInstrumentPass());
+        FPM.addPass(createFunctionToLoopPassAdaptor(XRayLoopInstrumentPass()));
         MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
       });
 

@@ -577,7 +577,6 @@ FUNCTION_PASS("view-dom-only", DomOnlyViewer())
 FUNCTION_PASS("view-post-dom", PostDomViewer())
 FUNCTION_PASS("view-post-dom-only", PostDomOnlyViewer())
 FUNCTION_PASS("wasm-eh-prepare", WasmEHPreparePass())
-FUNCTION_PASS("xray-instrument-loops", XRayLoopInstrumentPass())
 #undef FUNCTION_PASS
 
 #ifndef FUNCTION_PASS_WITH_PARAMS
@@ -797,6 +796,7 @@ LOOP_PASS("loop-simplifycfg", LoopSimplifyCFGPass())
 LOOP_PASS("loop-unroll-full", LoopFullUnrollPass())
 LOOP_PASS("loop-versioning-licm", LoopVersioningLICMPass())
 LOOP_PASS("no-op-loop", NoOpLoopPass())
+LOOP_PASS("xray-instrument-loops", XRayLoopInstrumentPass())
 LOOP_PASS("print", PrintLoopPass(errs()))
 LOOP_PASS("print<ddg>", DDGAnalysisPrinterPass(errs()))
 LOOP_PASS("print<hash-recognize>", HashRecognizePrinterPass(errs()))
