@@ -751,9 +751,6 @@ static Attr *handleAtomicAttr(Sema &S, Stmt *St, const ParsedAttr &AL,
 
 static Attr *handleXRayInstrumentLoopAttr(Sema &S, Stmt *St,
                                           const ParsedAttr &A) {
-  assert(clang::isa<ForStmt>(St) &&
-         "xray_instrument_loop attribute can only be applied to for-loops.");
-
   if (!A.checkExactlyNumArgs(S, 1)) {
     return nullptr;
   }

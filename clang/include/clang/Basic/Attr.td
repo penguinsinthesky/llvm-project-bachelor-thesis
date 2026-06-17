@@ -988,7 +988,7 @@ def XRayLogArgs : InheritableAttr {
 
 def XRayInstrumentLoop : StmtAttr {
     let Spellings = [Clang<"xray_instrument_loop">];
-    let Subjects = SubjectList<[ForStmt], ErrorDiag, "'for' loops">;
+    let Subjects = SubjectList<[ForStmt, WhileStmt, DoStmt], ErrorDiag, "'for', 'while' and 'do-while' loops">;
     let Args = [StringArgument<"RegionName">];
     let Documentation = [XRayDocs];
 }
