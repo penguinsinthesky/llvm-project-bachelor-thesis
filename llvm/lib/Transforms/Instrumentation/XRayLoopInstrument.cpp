@@ -1,6 +1,7 @@
 #include "llvm/Transforms/Instrumentation/XRayLoopInstrument.h"
 
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/PostDominators.h"
 #include "llvm/Transforms/Utils/XRayCustomRegionInstrumentation.h"
 
 namespace llvm {
@@ -27,29 +28,32 @@ findBodyStartBlocks(const Loop &L,
   }
 }
 
-static void findEndBlocks(const Loop &L, SmallVectorImpl<BasicBlock *> &EndBlocks) {
-  // the latch is a loop exit
+static void findEndBlocks(const Loop &L,
+                          SmallVectorImpl<BasicBlock *> &EndBlocks) {
+  const BasicBlock *Header = L.getHeader();
   BasicBlock *Latch = L.getLoopLatch();
 
+  // the latch is a loop exit
+  EndBlocks.push_back(Latch);
+
   // all exiting blocks are end blocks (can be caused by a break)
-  L.getExitingBlocks(EndBlocks);
+  SmallVector<BasicBlock *, 2> ExitingBlocks;
+  L.getExitingBlocks(ExitingBlocks);
 
   // only add latch if not in the list already
-  // vector will be tiny, so linear search should be acceptable.
-  for (const auto *ExitingBlock : EndBlocks) {
-    if (ExitingBlock == Latch) {
-      return;
-    }
-  }
+  for (auto *ExitingBlock : ExitingBlocks) {
+    // latch block already recorded
+    // no unconditional loop exit expected in header
+    if (ExitingBlock == Latch || ExitingBlock == Header)
+      continue;
 
-  EndBlocks.push_back(Latch);
+    EndBlocks.push_back(ExitingBlock);
+  }
 }
 
-} // namespace llvm
-
-llvm::PreservedAnalyses
-llvm::XRayLoopInstrumentPass::run(Loop &L, LoopAnalysisManager &,
-                                  LoopStandardAnalysisResults &, LPMUpdater &) {
+PreservedAnalyses XRayLoopInstrumentPass::run(Loop &L, LoopAnalysisManager &,
+                                              LoopStandardAnalysisResults &,
+                                              LPMUpdater &) {
 
   const std::optional<StringRef> RegionName = getRegionName(L);
   if (!RegionName.has_value()) {
@@ -61,8 +65,7 @@ llvm::XRayLoopInstrumentPass::run(Loop &L, LoopAnalysisManager &,
   return PreservedAnalyses::none();
 }
 
-std::optional<llvm::StringRef>
-llvm::XRayLoopInstrumentPass::getRegionName(const Loop &L) {
+std::optional<StringRef> XRayLoopInstrumentPass::getRegionName(const Loop &L) {
   if (const MDNode *ID = L.getLoopID()) {
     for (const Metadata *Op : ID->operands()) {
       if (const auto *OpNode = dyn_cast<MDNode>(Op)) {
@@ -83,8 +86,8 @@ llvm::XRayLoopInstrumentPass::getRegionName(const Loop &L) {
 
   return std::nullopt;
 }
-void llvm::XRayLoopInstrumentPass::instrumentLoop(const Loop &L,
-                                                  const StringRef RegionName) {
+void XRayLoopInstrumentPass::instrumentLoop(const Loop &L,
+                                            const StringRef RegionName) {
   SmallVector<BasicBlock *, 1> BodyStartBlocks;
   SmallVector<BasicBlock *, 2> BodyEndBlocks;
 
@@ -109,3 +112,5 @@ void llvm::XRayLoopInstrumentPass::instrumentLoop(const Loop &L,
     Inserter.insertExit(Builder);
   }
 }
+
+} // namespace llvm
