@@ -27,6 +27,24 @@ findBodyStartBlocks(const Loop &L,
   }
 }
 
+static void findEndBlocks(const Loop &L, SmallVectorImpl<BasicBlock *> &EndBlocks) {
+  // the latch is a loop exit
+  BasicBlock *Latch = L.getLoopLatch();
+
+  // all exiting blocks are end blocks (can be caused by a break)
+  L.getExitingBlocks(EndBlocks);
+
+  // only add latch if not in the list already
+  // vector will be tiny, so linear search should be acceptable.
+  for (const auto *ExitingBlock : EndBlocks) {
+    if (ExitingBlock == Latch) {
+      return;
+    }
+  }
+
+  EndBlocks.push_back(Latch);
+}
+
 } // namespace llvm
 
 llvm::PreservedAnalyses
@@ -71,7 +89,7 @@ void llvm::XRayLoopInstrumentPass::instrumentLoop(const Loop &L,
   SmallVector<BasicBlock *, 2> BodyEndBlocks;
 
   findBodyStartBlocks(L, BodyStartBlocks);
-  L.getLoopLatches(BodyEndBlocks);
+  findEndBlocks(L, BodyEndBlocks);
 
   auto Inserter = XRayCustomRegionInserter::forLoop(L, RegionName);
 
