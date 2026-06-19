@@ -9,35 +9,41 @@ entry:
   store i32 0, ptr %i, align 4
   br label %for.cond
 
+; CHECK-LABEL: for.cond:
+; CHECK-NEXT: %0 = load i32, ptr %i, align 4
+; CHECK-NEXT: %cmp = icmp slt i32 %0, 5
+; CHECK-NEXT: br i1 %cmp, label %for.body, label %for.end
 for.cond:
   %0 = load i32, ptr %i, align 4
   %cmp = icmp slt i32 %0, 5
   br i1 %cmp, label %for.body, label %for.end
 
 ; CHECK-LABEL: for.body:
+; CHECK-NEXT: call void @llvm.xray.customregionenter(ptr @[[REGION_GLOBAL]])
+; CHECK-NEXT: %1 = load i32, ptr %i, align 4
+; CHECK-NEXT: %2 = load i32, ptr %i, align 4
+; CHECK-NEXT: %add = add nsw i32 %1, %2
+; CHECK-NEXT: br label %for.inc
 for.body:
-  ; CHECK-NEXT: call void @llvm.xray.customregionenter(ptr @[[REGION_GLOBAL]])
   %1 = load i32, ptr %i, align 4
-  ; CHECK-NEXT: %1 = load i32, ptr %i, align 4
   %2 = load i32, ptr %i, align 4
-  ; CHECK-NEXT: %2 = load i32, ptr %i, align 4
   %add = add nsw i32 %1, %2
-  ; CHECK-NEXT: %add = add nsw i32 %1, %2
   br label %for.inc
-  ; CHECK-NEXT: br label %for.inc
 
 ; CHECK-LABEL: for.inc:
+; CHECK-NEXT: %3 = load i32, ptr %i, align 4
+; CHECK-NEXT: %inc = add nsw i32 %3, 1
+; CHECK-NEXT: store i32 %inc, ptr %i, align 4
+; CHECK-NEXT: call void @llvm.xray.customregionexit(ptr @[[REGION_GLOBAL]])
+; CHECK-NEXT: br label %for.cond, !llvm.loop !{{[0-9]+}}
 for.inc:
   %3 = load i32, ptr %i, align 4
-  ; CHECK-NEXT: %3 = load i32, ptr %i, align 4
   %inc = add nsw i32 %3, 1
-  ; CHECK-NEXT: %inc = add nsw i32 %3, 1
   store i32 %inc, ptr %i, align 4
-  ; CHECK-NEXT: store i32 %inc, ptr %i, align 4
-  ; CHECK-NEXT: call void @llvm.xray.customregionexit(ptr @[[REGION_GLOBAL]])
   br label %for.cond, !llvm.loop !0
-  ; CHECK-NEXT: br label %for.cond, !llvm.loop !{{[0-9]+}}
 
+; CHECK-LABEL: for.end:
+; CHECK-NEXT: ret void
 for.end:
   ret void
 }

@@ -8,31 +8,34 @@ entry:
   %b = alloca i32, align 4
   store i32 0, ptr %b, align 4
   br label %do.body
+
 ; CHECK-LABEL: do.body:
-do.body:
 ; CHECK-NEXT: call void @llvm.xray.customregionenter(ptr @[[REGION_GLOBAL]])
-  call void @foo()
 ; CHECK-NEXT: call void @foo()
-  %0 = load i32, ptr %b, align 4
 ; CHECK-NEXT: %0 = load i32, ptr %b, align 4
-  %inc = add nsw i32 %0, 1
 ; CHECK-NEXT: %inc = add nsw i32 %0, 1
-  store i32 %inc, ptr %b, align 4
 ; CHECK-NEXT: store i32 %inc, ptr %b, align 4
-  br label %do.cond
 ; CHECK-NEXT: br label %do.cond
+do.body:
+  call void @foo()
+  %0 = load i32, ptr %b, align 4
+  %inc = add nsw i32 %0, 1
+  store i32 %inc, ptr %b, align 4
+  br label %do.cond
 
 ; CHECK-LABEL: do.cond:
-do.cond:
-  %1 = load i32, ptr %b, align 4
 ; CHECK-NEXT: %1 = load i32, ptr %b, align 4
-  %cmp = icmp sle i32 %1, 5
 ; CHECK-NEXT: %cmp = icmp sle i32 %1, 5
 ; CHECK-NEXT: call void @llvm.xray.customregionexit(ptr @[[REGION_GLOBAL]])
-  br i1 %cmp, label %do.body, label %do.end, !llvm.loop !0
 ; CHECK-NEXT: br i1 %cmp, label %do.body, label %do.end, !llvm.loop !0
+do.cond:
+  %1 = load i32, ptr %b, align 4
+  %cmp = icmp sle i32 %1, 5
+  br i1 %cmp, label %do.body, label %do.end, !llvm.loop !0
 
-do.end:                                           
+; CHECK-LABEL: do.end:
+; CHECK-NEXT: ret i32 0
+do.end:
   ret i32 0
 }
 

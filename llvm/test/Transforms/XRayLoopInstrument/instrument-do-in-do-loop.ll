@@ -45,6 +45,11 @@ do.cond:
   %cmp = icmp sle i32 %1, 5
   br i1 %cmp, label %do.body1, label %do.end, !llvm.loop !0
 
+; CHECK-LABEL: do.end:
+; CHECK-NEXT: %2 = load i32, ptr %a, align 4
+; CHECK-NEXT: %inc2 = add nsw i32 %2, 1
+; CHECK-NEXT: store i32 %inc2, ptr %a, align 4
+; CHECK-NEXT: br label %do.cond3
 do.end:
   %2 = load i32, ptr %a, align 4
   %inc2 = add nsw i32 %2, 1
@@ -61,6 +66,8 @@ do.cond3:
   %cmp4 = icmp sle i32 %3, 5
   br i1 %cmp4, label %do.body, label %do.end5, !llvm.loop !2
 
+; CHECK-LABEL: do.end5:
+; CHECK-NEXT: ret i32 0
 do.end5:
   ret i32 0
 }

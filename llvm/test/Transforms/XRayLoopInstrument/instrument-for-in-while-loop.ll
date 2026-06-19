@@ -13,6 +13,10 @@ entry:
   store i32 0, ptr %a, align 4
   br label %while.cond
 
+; CHECK-LABEL: while.cond:
+; CHECK-NEXT: %0 = load i32, ptr %a, align 4
+; CHECK-NEXT: %cmp = icmp slt i32 %0, 5
+; CHECK-NEXT: br i1 %cmp, label %while.body, label %while.end
 while.cond:
   %0 = load i32, ptr %a, align 4
   %cmp = icmp slt i32 %0, 5
@@ -26,6 +30,10 @@ while.body:
   store i32 0, ptr %i, align 4
   br label %for.cond
 
+; CHECK-LABEL: for.cond:
+; CHECK-NEXT: %1 = load i32, ptr %i, align 4
+; CHECK-NEXT: %cmp1 = icmp slt i32 %1, 5
+; CHECK-NEXT: br i1 %cmp1, label %for.body, label %for.end
 for.cond:
   %1 = load i32, ptr %i, align 4
   %cmp1 = icmp slt i32 %1, 5
@@ -63,6 +71,8 @@ for.end:
   store i32 %inc2, ptr %a, align 4
   br label %while.cond, !llvm.loop !2
 
+; CHECK-LABEL: while.end:
+; CHECK-NEXT: ret i32 0
 while.end:
   ret i32 0
 }
