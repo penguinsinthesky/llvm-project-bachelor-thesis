@@ -5887,6 +5887,16 @@ def XRayTypedEvent : Builtin {
   let Prototype = "void(size_t, char const*, size_t)";
 }
 
+def XRayCustomRegionEnter : Builtin {
+  let Spellings = ["__xray_customregionenter"];
+  let Prototype = "void(char const*)";
+}
+
+def XRayCustomRegionExit : Builtin {
+  let Spellings = ["__xray_customregionexit"];
+  let Prototype = "void(char const*)";
+}
+
 // Win64-compatible va_list functions.
 def MSVaStart : Builtin {
   let Spellings = ["__builtin_ms_va_start"];

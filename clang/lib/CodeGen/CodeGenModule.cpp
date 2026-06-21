@@ -5290,6 +5290,20 @@ CodeGenModule::getPFPDeactivationSymbol(const FieldDecl *FD) {
   return DS;
 }
 
+llvm::XRayCustomRegionInserter &
+CodeGenModule::getUserPlacedXRayCustomRegionInserter(
+    const StringRef RegionName) {
+  if (const auto Inserter = XRayCustomRegions.find(RegionName);
+      Inserter != XRayCustomRegions.end()) {
+    return Inserter->second;
+  }
+
+  llvm::XRayCustomRegionInserter Inserter =
+      llvm::XRayCustomRegionInserter::forUserPlaced(RegionName, TheModule);
+  return XRayCustomRegions.insert(std::make_pair(RegionName, Inserter))
+      .first->second;
+}
+
 void CodeGenModule::emitPFPFieldsWithEvaluatedOffset() {
   llvm::Constant *Nop = llvm::ConstantExpr::getIntToPtr(
       llvm::ConstantInt::get(Int64Ty, 0xd503201f), VoidPtrTy);

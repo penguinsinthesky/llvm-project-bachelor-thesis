@@ -3137,6 +3137,8 @@ public:
   /// to -1 in accordance with the Itanium C++ ABI.
   void EmitNullInitialization(Address DestPtr, QualType Ty);
 
+  RValue EmitXRayCustomRegionProbe(const CallExpr *E, bool Enter);
+
   /// Emits a call to an LLVM variable-argument intrinsic, either
   /// \c llvm.va_start or \c llvm.va_end.
   /// \param ArgValue A reference to the \c va_list as emitted by either

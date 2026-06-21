@@ -3067,6 +3067,10 @@ private:
   ExprResult BuiltinMatrixColumnMajorStore(CallExpr *TheCall,
                                            ExprResult CallResult);
 
+  // XRay builtin handling
+  /// Checks that the one argument is a statically known string
+  bool BuiltinXRayCustomRegionProbe(const CallExpr *TheCall);
+
   /// CheckFormatArguments - Check calls to printf and scanf (and similar
   /// functions) for correct use of format strings.
   /// Returns true if a format string has been fully checked.

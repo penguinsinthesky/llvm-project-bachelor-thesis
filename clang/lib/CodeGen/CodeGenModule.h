@@ -40,6 +40,8 @@
 #include "llvm/IR/ValueHandle.h"
 #include "llvm/Support/Allocator.h"
 #include "llvm/Transforms/Utils/SanitizerStats.h"
+#include "llvm/Transforms/Utils/XRayCustomRegionInstrumentation.h"
+
 #include <optional>
 
 namespace llvm {
@@ -729,6 +731,8 @@ private:
   // -fms-hotpatch-functions-file (and -list). This will nearly always be empty.
   // The list is sorted for binary-searching.
   std::vector<std::string> MSHotPatchFunctions;
+
+  llvm::DenseMap<StringRef, llvm::XRayCustomRegionInserter> XRayCustomRegions;
 
 public:
   CodeGenModule(ASTContext &C, IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS,
@@ -1988,6 +1992,8 @@ public:
 
   std::string getPFPFieldName(const FieldDecl *FD);
   llvm::GlobalValue *getPFPDeactivationSymbol(const FieldDecl *FD);
+
+  llvm::XRayCustomRegionInserter &getUserPlacedXRayCustomRegionInserter(StringRef RegionName);
 
 private:
   /// Translate an llvm::abi::ArgInfo (computed by the LLVMABI library) into

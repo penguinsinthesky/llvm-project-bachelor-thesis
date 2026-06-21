@@ -14411,4 +14411,7 @@ def err_cuda_device_kernel_launch_not_supported
 def err_cuda_device_kernel_launch_require_rdc
     : Error<"kernel launch from __device__ or __global__ function requires "
             "relocatable device code (i.e. requires -fgpu-rdc)">;
+
+// XRay builtins diagnostics
+def err_xray_custom_region_probe_arg_not_constant : Error<"custom region's name must be a compile-time constant">;
 } // end of sema component.

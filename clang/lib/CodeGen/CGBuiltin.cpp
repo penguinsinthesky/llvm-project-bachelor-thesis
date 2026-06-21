@@ -2653,6 +2653,61 @@ RValue CodeGenFunction::emitStdcFirstBit(const CallExpr *E, Intrinsic::ID IntID,
   return RValue::get(Result);
 }
 
+RValue CodeGenFunction::EmitXRayCustomRegionProbe(const CallExpr *E,
+                                                  const bool Enter) {
+  const Expr *Arg = E->getArg(0);
+  const std::optional<std::string> RegionName = Arg->tryEvaluateString(getContext());
+  assert(RegionName.has_value() && "Argument must be a statically known string");
+
+  XRayCustomRegionInserter &Inserter = CGM.getUserPlacedXRayCustomRegionInserter(RegionName.value());
+
+  return RValue::get(Enter ? Inserter.insertEnter(Builder) : Inserter.insertExit(Builder));
+}
+
+namespace {
+
+// PaddingClearer is a utility class that clears padding bits in a
+// c/c++ type. It traverses the type recursively, collecting occupied
+// bit intervals, and then computes the padding intervals.
+// In the end, it clears the padding bits by writing zeros
+// to the padding intervals bytes-by-bytes. If a byte only contains
+// some padding bits, it writes zeros to only those bits. This is
+// the case for bit-fields.
+struct PaddingClearer {
+  PaddingClearer(CodeGenFunction &F)
+      : CGF(F), CharWidth(CGF.getContext().getCharWidth()) {}
+
+  void run(Address Src, QualType Ty) {
+    OccuppiedIntervals.clear();
+    Stack.clear();
+
+    Stack.push_back(Data{0, Ty, true});
+    while (!Stack.empty()) {
+      auto Current = Stack.back();
+      Stack.pop_back();
+      Visit(Current);
+    }
+
+    MergeOccuppiedIntervals();
+    auto PaddingIntervals =
+        GetPaddingIntervals(CGF.getContext().getTypeSize(Ty));
+    for (const auto &Interval : PaddingIntervals) {
+      ClearPadding(Src, Interval);
+    }
+  }
+
+private:
+  struct BitInterval {
+    // [First, Last)
+    uint64_t First;
+    uint64_t Last;
+  };
+
+  struct Data {
+    uint64_t StartBitOffset;
+    QualType Ty;
+    bool VisitVirtualBase;
+  };
 static void ClearPadding(CodeGenFunction &CGF, Address Src,
                          const ASTContext::BitInterval &PaddingInterval) {
   uint64_t CharWidth = CGF.getContext().getCharWidth();
@@ -6766,7 +6821,10 @@ RValue CodeGenFunction::EmitBuiltinExpr(const GlobalDecl GD, unsigned BuiltinID,
       Arg2 = Builder.CreateTruncOrBitCast(Arg2, PTy2);
     return RValue::get(Builder.CreateCall(F, {Arg0, Arg1Val, Arg2}));
   }
-
+  case Builtin::BI__xray_customregionenter:
+    return EmitXRayCustomRegionProbe(E, true);
+  case Builtin::BI__xray_customregionexit:
+    return EmitXRayCustomRegionProbe(E, false);
   case Builtin::BI__builtin_ms_va_start:
   case Builtin::BI__builtin_ms_va_end:
     return RValue::get(

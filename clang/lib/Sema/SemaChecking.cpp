@@ -4185,6 +4185,11 @@ Sema::CheckBuiltinFunctionCall(FunctionDecl *FDecl, unsigned BuiltinID,
     if (BuiltinCountedByRef(TheCall))
       return ExprError();
     break;
+  case Builtin::BI__xray_customregionenter:
+  case Builtin::BI__xray_customregionexit:
+    if (BuiltinXRayCustomRegionProbe(TheCall))
+      return ExprError();
+    break;
   }
 
   if (getLangOpts().HLSL && HLSL().CheckBuiltinFunctionCall(BuiltinID, TheCall))
@@ -17578,6 +17583,19 @@ ExprResult Sema::BuiltinMatrixColumnMajorStore(CallExpr *TheCall,
     return ExprError();
 
   return CallResult;
+}
+
+bool Sema::BuiltinXRayCustomRegionProbe(const CallExpr *TheCall) {
+  const Expr *Arg = TheCall->getArg(0);
+  const std::optional<std::string> RegionName = Arg->tryEvaluateString(Context);
+  if (!RegionName.has_value()) {
+    Diag(TheCall->getBeginLoc(), diag::err_xray_custom_region_probe_arg_not_constant)
+        << Arg->getSourceRange();
+    return true;
+  }
+
+  // argument is a statically known string => all good
+  return false;
 }
 
 void Sema::CheckTCBEnforcement(const SourceLocation CallExprLoc,
