@@ -5045,7 +5045,7 @@ void AsmPrinter::XRayFunctionEntry::emit(int Bytes, MCStreamer *Out) const {
 }
 
 void AsmPrinter::emitXRayTable() {
-  if (Sleds.empty())
+  if (Sleds.empty() && CustomRegionInfos.empty())
     return;
 
   auto PrevSection = OutStreamer->getCurrentSectionOnly();
