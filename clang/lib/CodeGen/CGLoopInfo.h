@@ -311,7 +311,9 @@ public:
   void setMustProgress(bool P) { StagedAttrs.MustProgress = P; }
 
   /// Set name of XRay region for this loop
-  void setXRayRegionName(StringRef RegionName) { StagedAttrs.XRayRegionName = std::make_optional(RegionName); }
+  void setXRayRegionName(StringRef RegionName) {
+    StagedAttrs.XRayRegionName = std::make_optional(RegionName);
+  }
 
   /// Returns true if there is LoopInfo on the stack.
   bool hasInfo() const { return !Active.empty(); }

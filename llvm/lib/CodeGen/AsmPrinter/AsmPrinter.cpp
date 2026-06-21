@@ -5199,7 +5199,8 @@ void AsmPrinter::emitXRayTable() {
   CustomRegionInfos.clear();
 }
 
-void AsmPrinter::emitXRayCustomRegionData(MCSection *SledToCustomRegionSection) {
+void AsmPrinter::emitXRayCustomRegionData(
+    MCSection *SledToCustomRegionSection) {
   // First, emit name strings so they can be referenced from custom region info
   // data. These strings cannot be stored in-line with custom region info data
   // as this needs to have equal size for all regions.
@@ -5283,7 +5284,7 @@ void AsmPrinter::recordCustomRegionSled(MCSymbol *Sled, const MachineInstr &MI,
     }
   } else {
     CustomRegionInfos.insert(std::make_pair(
-        RegionInfoGlobal,  SmallVector<XRayFunctionEntry, 4>{FunctionEntry}));
+        RegionInfoGlobal, SmallVector<XRayFunctionEntry, 4>{FunctionEntry}));
   }
 }
 

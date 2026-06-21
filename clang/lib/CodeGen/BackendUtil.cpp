@@ -1109,7 +1109,8 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
           });
 
     if (CodeGenOpts.XRayInstrumentFunctions) {
-      PB.registerPipelineStartEPCallback([] (ModulePassManager &MPM, OptimizationLevel Level) {
+      PB.registerPipelineStartEPCallback([](ModulePassManager &MPM,
+                                            OptimizationLevel Level) {
         FunctionPassManager FPM;
         FPM.addPass(LoopSimplifyPass());
         FPM.addPass(createFunctionToLoopPassAdaptor(XRayLoopInstrumentPass()));
@@ -1131,7 +1132,6 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
           MPM.addPass(XRayPostInlinePurgePass());
         });
       }
-
     }
 
     // TODO: Consider passing the MemoryProfileOutput to the pass builder via

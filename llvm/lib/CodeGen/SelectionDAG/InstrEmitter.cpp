@@ -1488,7 +1488,9 @@ void InstrEmitter::EmitCustomRegionProbeNode(const SDNode *Node,
       cast<GlobalAddressSDNode>(Node->getOperand(0).getNode());
 
   BuildMI(*MBB, InsertPos, Node->getDebugLoc(), TII->get(MIOpcode))
-      .addGlobalAddress(RegionInfoAddress->getGlobal(), RegionInfoAddress->getOffset()); // add global as single operand
+      .addGlobalAddress(
+          RegionInfoAddress->getGlobal(),
+          RegionInfoAddress->getOffset()); // add global as single operand
 }
 
 /// InstrEmitter - Construct an InstrEmitter and set it to start inserting

@@ -1993,7 +1993,8 @@ public:
   std::string getPFPFieldName(const FieldDecl *FD);
   llvm::GlobalValue *getPFPDeactivationSymbol(const FieldDecl *FD);
 
-  llvm::XRayCustomRegionInserter &getUserPlacedXRayCustomRegionInserter(StringRef RegionName);
+  llvm::XRayCustomRegionInserter &
+  getUserPlacedXRayCustomRegionInserter(StringRef RegionName);
 
 private:
   /// Translate an llvm::abi::ArgInfo (computed by the LLVMABI library) into

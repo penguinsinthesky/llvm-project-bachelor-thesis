@@ -198,7 +198,8 @@ loadObj(StringRef Filename, object::OwningBinary<object::ObjectFile> &ObjFile,
         SledEntry::FunctionKinds::TAIL,
         SledEntry::FunctionKinds::LOG_ARGS_ENTER,
         SledEntry::FunctionKinds::CUSTOM_EVENT,
-        SledEntry::FunctionKinds::TYPED_EVENT, // only added for indexing to work
+        SledEntry::FunctionKinds::TYPED_EVENT, // only added for indexing to
+                                               // work
         SledEntry::FunctionKinds::CUSTOM_REGION_ENTER,
         SledEntry::FunctionKinds::CUSTOM_REGION_EXIT,
     };
@@ -223,7 +224,9 @@ loadObj(StringRef Filename, object::OwningBinary<object::ObjectFile> &ObjFile,
         State = ParseState::CUSTOM_REGION_ENTERS;
       } else if (Entry.Kind == SledEntry::FunctionKinds::CUSTOM_REGION_EXIT) {
         // custom regions must start with their entry sled -> error
-        return make_error<StringError>("First sled must not be a custom region's exit", std::make_error_code(std::errc::executable_format_error));
+        return make_error<StringError>(
+            "First sled must not be a custom region's exit",
+            std::make_error_code(std::errc::executable_format_error));
       } else {
         // first function will be a normal function
         CurFn = Entry.Function;
@@ -238,7 +241,9 @@ loadObj(StringRef Filename, object::OwningBinary<object::ObjectFile> &ObjFile,
         State = ParseState::CUSTOM_REGION_ENTERS;
       } else if (Entry.Kind == SledEntry::FunctionKinds::CUSTOM_REGION_EXIT) {
         // custom regions must start with their entry sled -> error
-        return make_error<StringError>("Custom region's exit sled before its entry sled", std::make_error_code(std::errc::executable_format_error));
+        return make_error<StringError>(
+            "Custom region's exit sled before its entry sled",
+            std::make_error_code(std::errc::executable_format_error));
       } else {
         if (Entry.Function != CurFn) {
           // this function's sleds are over, another function starts here

@@ -3704,8 +3704,10 @@ void SelectionDAGBuilder::LowerXRayCustomRegionProbe(
   if (!Triple.isAArch64(64) && Triple.getArch() != Triple::x86_64)
     return;
 
-  const auto *const RegionInfoGlobal = cast<GlobalVariable>(Call.getArgOperand(0));
-  const SDValue GlobalNode = DAG.getTargetGlobalAddress(RegionInfoGlobal, sdl, MVT::Other);
+  const auto *const RegionInfoGlobal =
+      cast<GlobalVariable>(Call.getArgOperand(0));
+  const SDValue GlobalNode =
+      DAG.getTargetGlobalAddress(RegionInfoGlobal, sdl, MVT::Other);
 
   // add chain to make sure this instruction is after all previous instructions
   const SDValue Chain = getRoot();

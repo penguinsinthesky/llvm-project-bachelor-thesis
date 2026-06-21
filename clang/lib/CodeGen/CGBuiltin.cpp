@@ -2656,12 +2656,16 @@ RValue CodeGenFunction::emitStdcFirstBit(const CallExpr *E, Intrinsic::ID IntID,
 RValue CodeGenFunction::EmitXRayCustomRegionProbe(const CallExpr *E,
                                                   const bool Enter) {
   const Expr *Arg = E->getArg(0);
-  const std::optional<std::string> RegionName = Arg->tryEvaluateString(getContext());
-  assert(RegionName.has_value() && "Argument must be a statically known string");
+  const std::optional<std::string> RegionName =
+      Arg->tryEvaluateString(getContext());
+  assert(RegionName.has_value() &&
+         "Argument must be a statically known string");
 
-  XRayCustomRegionInserter &Inserter = CGM.getUserPlacedXRayCustomRegionInserter(RegionName.value());
+  XRayCustomRegionInserter &Inserter =
+      CGM.getUserPlacedXRayCustomRegionInserter(RegionName.value());
 
-  return RValue::get(Enter ? Inserter.insertEnter(Builder) : Inserter.insertExit(Builder));
+  return RValue::get(Enter ? Inserter.insertEnter(Builder)
+                           : Inserter.insertExit(Builder));
 }
 
 namespace {

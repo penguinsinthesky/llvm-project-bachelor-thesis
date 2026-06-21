@@ -426,7 +426,8 @@ public:
 
   // All the sleds to be emitted.
   SmallVector<XRayFunctionEntry, 4> Sleds;
-  SmallDenseMap<const GlobalValue *, SmallVector<XRayFunctionEntry, 4>, 2> CustomRegionInfos;
+  SmallDenseMap<const GlobalValue *, SmallVector<XRayFunctionEntry, 4>, 2>
+      CustomRegionInfos;
 
   // Helper function to record a given XRay sled.
   void recordSled(MCSymbol *Sled, const MachineInstr &MI, SledKind Kind,

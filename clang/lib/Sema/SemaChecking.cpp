@@ -17589,7 +17589,8 @@ bool Sema::BuiltinXRayCustomRegionProbe(const CallExpr *TheCall) {
   const Expr *Arg = TheCall->getArg(0);
   const std::optional<std::string> RegionName = Arg->tryEvaluateString(Context);
   if (!RegionName.has_value()) {
-    Diag(TheCall->getBeginLoc(), diag::err_xray_custom_region_probe_arg_not_constant)
+    Diag(TheCall->getBeginLoc(),
+         diag::err_xray_custom_region_probe_arg_not_constant)
         << Arg->getSourceRange();
     return true;
   }

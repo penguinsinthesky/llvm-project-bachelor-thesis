@@ -43,7 +43,8 @@ struct SledEntry {
     TAIL,
     LOG_ARGS_ENTER,
     CUSTOM_EVENT,
-    TYPED_EVENT = 5, // only inserted for completeness' sake, no idea why it wasn't there before
+    TYPED_EVENT = 5, // only inserted for completeness' sake, no idea why it
+                     // wasn't there before
     CUSTOM_REGION_ENTER = 6,
     CUSTOM_REGION_EXIT = 7,
   };
