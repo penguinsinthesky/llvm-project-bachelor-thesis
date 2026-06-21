@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-enum XRayCustomRegionKind {
+enum XRayCustomRegionKind : int {
   /// This region encloses an inlined function.
   INLINED_FUNCTION = 0,
   /// This region originates from user placed probes.

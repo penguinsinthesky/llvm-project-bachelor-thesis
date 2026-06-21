@@ -1,5 +1,6 @@
 #include "llvm/Transforms/Instrumentation/XRayInlineInstrument.h"
 
+#include "../../../../compiler-rt/include/xray/xray_custom_region_kind.h" // FIXME
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstVisitor.h"

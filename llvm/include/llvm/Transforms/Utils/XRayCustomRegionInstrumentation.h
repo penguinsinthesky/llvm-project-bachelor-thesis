@@ -2,8 +2,7 @@
 #define LLVM_XRAYCUSTOMREGIONINSERTER_H
 
 // Region Kinds defined in compiler-rt are the single source of truth
-// TODO check if there is a better way of including this
-#include "../../../../compiler-rt/include/xray/xray_custom_region_kind.h"
+enum XRayCustomRegionKind : int;
 
 #include "llvm/Analysis/LoopInfo.h"
 
@@ -33,12 +32,15 @@ public:
   static XRayCustomRegionInserter
   forInlinedFunction(Function &OriginalFunction);
 
+  static XRayCustomRegionInserter forUserPlaced(StringRef RegionName,
+                                                Module &Module);
+
   static XRayCustomRegionInserter forLoop(const Loop &Loop,
                                           StringRef RegionName);
 
-  CallInst *insertEnter(IRBuilder<> &Builder);
+  CallInst *insertEnter(IRBuilderBase &Builder);
 
-  CallInst *insertExit(IRBuilder<> &Builder);
+  CallInst *insertExit(IRBuilderBase &Builder);
 
   constexpr static StringRef SectionName = "xray_custom_regions";
 

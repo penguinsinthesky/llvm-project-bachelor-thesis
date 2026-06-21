@@ -1,5 +1,9 @@
 #include "llvm/Transforms/Utils/XRayCustomRegionInstrumentation.h"
 
+// Region Kinds defined in compiler-rt are the single source of truth
+// TODO check if there is a better way of including this
+#include "../../../../compiler-rt/include/xray/xray_custom_region_kind.h"
+
 namespace llvm {
 
 constexpr static StringRef OriginalFunctionMdKey =
@@ -72,6 +76,15 @@ XRayCustomRegionInserter::forInlinedFunction(Function &OriginalFunction) {
 }
 
 XRayCustomRegionInserter
+XRayCustomRegionInserter::forUserPlaced(const StringRef RegionName,
+                                        Module &Module) {
+  auto *RegionInfoGlobal = createRegionInfoGlobal(
+      XRayCustomRegionKind::USER_PLACED, RegionName, Module);
+
+  return XRayCustomRegionInserter(RegionInfoGlobal);
+}
+
+XRayCustomRegionInserter
 XRayCustomRegionInserter::forLoop(const Loop &Loop, StringRef RegionName) {
   Function *ParentFunction = Loop.getHeader()->getParent();
   auto *RegionInfoGlobal = createRegionInfoGlobal(
@@ -80,12 +93,12 @@ XRayCustomRegionInserter::forLoop(const Loop &Loop, StringRef RegionName) {
   return XRayCustomRegionInserter(RegionInfoGlobal);
 }
 
-CallInst *XRayCustomRegionInserter::insertEnter(IRBuilder<> &Builder) {
+CallInst *XRayCustomRegionInserter::insertEnter(IRBuilderBase &Builder) {
   return Builder.CreateIntrinsic(Intrinsic::xray_customregionenter,
                                  {RegionInfoGlobal});
 }
 
-CallInst *XRayCustomRegionInserter::insertExit(IRBuilder<> &Builder) {
+CallInst *XRayCustomRegionInserter::insertExit(IRBuilderBase &Builder) {
   return Builder.CreateIntrinsic(Intrinsic::xray_customregionexit,
                                  {RegionInfoGlobal});
 }
