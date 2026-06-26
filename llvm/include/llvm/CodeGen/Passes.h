@@ -418,6 +418,10 @@ LLVM_ABI extern char &FuncletLayoutID;
 /// the target platform.
 LLVM_ABI extern char &XRayInstrumentationID;
 
+/// This pass removes XRay custom regions originating from inlined functions
+/// with an instruction count below their threshold
+LLVM_ABI extern char &XRayInlinedRegionsFilterID;
+
 /// This pass inserts FEntry calls
 LLVM_ABI extern char &FEntryInserterID;
 

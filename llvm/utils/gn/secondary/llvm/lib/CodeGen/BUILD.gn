@@ -260,5 +260,6 @@ static_library("CodeGen") {
     "WindowScheduler.cpp",
     "WindowsSecureHotPatching.cpp",
     "XRayInstrumentation.cpp",
+    "XRayCustomRegionFiltering.cpp",
   ]
 }

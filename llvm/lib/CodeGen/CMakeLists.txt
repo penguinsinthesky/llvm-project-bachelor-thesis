@@ -268,6 +268,7 @@ add_llvm_component_library(LLVMCodeGen
   WindowScheduler.cpp
   WindowsSecureHotPatching.cpp
   WinEHPrepare.cpp
+  XRayCustomRegionFiltering.cpp
   XRayInstrumentation.cpp
   ${GeneratedMLSources}
 

@@ -168,4 +168,5 @@ void llvm::initializeCodeGen(PassRegistry &Registry) {
   initializeWinEHPreparePass(Registry);
   initializeWindowsSecureHotPatchingPass(Registry);
   initializeXRayInstrumentationLegacyPass(Registry);
+  initializeXRayInlinedRegionFilterLegacyPass(Registry);
 }
