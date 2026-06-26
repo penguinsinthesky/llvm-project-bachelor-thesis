@@ -6,8 +6,28 @@
 
 namespace llvm {
 
-constexpr static StringRef OriginalFunctionMdKey =
-    "llvm.xray.original_function";
+constexpr static StringRef InlinedFunctionInfoMDKey =
+    "llvm.xray.inlined_function_info";
+
+const Function *XRayInlinedFunctionInfo::getOriginalFunction() const {
+  const Metadata *OriginalFunctionMD = MD->getOperand(0);
+  if (OriginalFunctionMD == nullptr) {
+    // if the original function was DCE'ed, the whole metadata is null
+    return nullptr;
+  }
+
+  return cast<Function>(
+      cast<ConstantAsMetadata>(OriginalFunctionMD)->getValue());
+}
+
+uint64_t XRayInlinedFunctionInfo::getInstructionThreshold() const {
+  const Metadata *InstructionThresholdID = MD->getOperand(1);
+  return cast<ConstantInt>(
+             cast<ConstantAsMetadata>(InstructionThresholdID)->getValue())
+      ->getZExtValue();
+}
+
+XRayInlinedFunctionInfo::XRayInlinedFunctionInfo(const MDNode *MD) : MD(MD) {}
 
 XRayCustomRegionInfo
 XRayCustomRegionInfo::fromIntrinsicCall(const CallInst &Call) {
@@ -19,6 +39,14 @@ XRayCustomRegionInfo::fromIntrinsicCall(const CallInst &Call) {
 
   auto *const Global = cast<GlobalVariable>(Call.getArgOperand(0));
   return XRayCustomRegionInfo(Global);
+}
+XRayCustomRegionInfo XRayCustomRegionInfo::fromRegionInfoGlobal(
+    const GlobalVariable *RegionInfoGlobal) {
+  return XRayCustomRegionInfo(RegionInfoGlobal);
+}
+
+const GlobalVariable *XRayCustomRegionInfo::getRegionInfoGlobal() const {
+  return RegionInfoGlobal;
 }
 
 XRayCustomRegionKind XRayCustomRegionInfo::getRegionKind() const {
@@ -34,23 +62,20 @@ StringRef XRayCustomRegionInfo::getRegionName() const {
   return RegionNameConstant->getAsCString();
 }
 
-const Function *XRayCustomRegionInfo::getOriginalFunction() const {
+XRayInlinedFunctionInfo XRayCustomRegionInfo::getInlinedFunctionInfo() const {
   assert(
       getRegionKind() == XRayCustomRegionKind::INLINED_FUNCTION &&
       "Only custom regions from inlined functions have an original function");
 
   SmallVector<MDNode *, 1> MDs;
-  RegionInfoGlobal->getMetadata(OriginalFunctionMdKey, MDs);
+  RegionInfoGlobal->getMetadata(InlinedFunctionInfoMDKey, MDs);
   assert(MDs.size() == 1 && "Expected exactly one metadata enty");
 
-  const Metadata *OriginalFunctionMD = MDs[0]->getOperand(0);
-  if (OriginalFunctionMD == nullptr) {
-    // if the original function was DCE'ed, the whole metadata is null
-    return nullptr;
-  }
+  return XRayInlinedFunctionInfo(MDs[0]);
+}
 
-  return cast<Function>(
-      cast<ConstantAsMetadata>(OriginalFunctionMD)->getValue());
+bool XRayCustomRegionInfo::operator==(const XRayCustomRegionInfo &Other) const {
+  return this->RegionInfoGlobal == Other.RegionInfoGlobal;
 }
 
 XRayCustomRegionInfo::XRayCustomRegionInfo(
@@ -63,14 +88,21 @@ const ConstantStruct *XRayCustomRegionInfo::regionInfo() const {
 
 XRayCustomRegionInserter
 XRayCustomRegionInserter::forInlinedFunction(Function &OriginalFunction) {
+  LLVMContext &Ctx = OriginalFunction.getContext();
   auto *RegionInfoGlobal = createRegionInfoGlobal(
       XRayCustomRegionKind::INLINED_FUNCTION,
       "<inlined>" + OriginalFunction.getName(), *OriginalFunction.getParent());
 
-  auto *OriginalFunctionMD =
-      MDNode::get(OriginalFunction.getContext(),
-                  ConstantAsMetadata::get(&OriginalFunction));
-  RegionInfoGlobal->addMetadata(OriginalFunctionMdKey, *OriginalFunctionMD);
+  const uint64_t XRayThreshold = OriginalFunction.getFnAttributeAsParsedInteger(
+      "xray-instruction-threshold", std::numeric_limits<uint64_t>::max());
+
+  auto *OriginalFunctionMD = ConstantAsMetadata::get(&OriginalFunction);
+  auto *InstructionThresholdMD = ConstantAsMetadata::get(
+      ConstantInt::get(Type::getInt64Ty(Ctx), XRayThreshold));
+
+  auto *AdditionalMD =
+      MDNode::get(Ctx, {OriginalFunctionMD, InstructionThresholdMD});
+  RegionInfoGlobal->addMetadata(InlinedFunctionInfoMDKey, *AdditionalMD);
 
   return XRayCustomRegionInserter(RegionInfoGlobal);
 }

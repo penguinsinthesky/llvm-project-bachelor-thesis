@@ -90,7 +90,8 @@ struct RemoveOwnIntrinsicVisitor : InstVisitor<RemoveOwnIntrinsicVisitor> {
     }
 
     const Function *ParentFunction = I.getFunction();
-    const Function *OriginalFunction = RegionInfo.getOriginalFunction();
+    const Function *OriginalFunction =
+        RegionInfo.getInlinedFunctionInfo().getOriginalFunction();
 
     if (OriginalFunction != nullptr && OriginalFunction == ParentFunction) {
       // this call belongs to the function we are already in
