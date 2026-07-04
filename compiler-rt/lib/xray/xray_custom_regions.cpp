@@ -15,6 +15,30 @@ using __sanitizer::SpinMutexLock;
 
 using namespace __xray;
 
+using IdRegionMap = DenseMap<int32_t, const XRayCustomRegionEntry *>;
+
+static SpinMutex XRayFuncIdToRegionMutex;
+static IdRegionMap *XRayFuncIdToRegion;
+
+template <typename R, class InfoFn>
+static R get_custom_region_data(const int32_t region_id, R invalid, InfoFn Fn) {
+  const auto [ObjId, FuncId] = UnpackId(region_id);
+
+  if (!__xray_is_dso_loaded(ObjId)) {
+    Report("Object %d is not loaded\n", ObjId);
+    return invalid;
+  }
+
+  IdRegionMap &RegionMap = XRayFuncIdToRegion[ObjId];
+
+  if (const auto *pair = RegionMap.find(FuncId)) {
+    return Fn(pair->second);
+  }
+
+  Report("Invalid custom region ID: %d\n", FuncId);
+  return invalid;
+}
+
 extern "C" {
 
 extern const XRayCustomRegionEntry __start_xray_custom_regions[]
@@ -28,11 +52,6 @@ extern const XRaySledToCustomRegionMapping __start_xray_sled_to_custom_region[]
     __attribute__((weak));
 extern const XRaySledToCustomRegionMapping __stop_xray_sled_to_custom_region[]
     __attribute__((weak));
-
-using IdRegionMap = DenseMap<int32_t, const XRayCustomRegionEntry *>;
-
-SpinMutex XRayFuncIdToRegionMutex;
-IdRegionMap *XRayFuncIdToRegion;
 
 void __xray_allocate_custom_region_buffer() {
   // static allocation of ~6KB with 256 objects
@@ -90,9 +109,11 @@ bool __xray_register_custom_regions(const XRaySledMap &InstrMap,
                                       const XRayFunctionSledIndex
                                           FunctionSleds) {
       const auto &FirstSled = FunctionSleds.Begin[0];
-      const auto PackedId = MakePackedId(FuncId, ObjId);
-      FuncIdToRegion[PackedId] =
-          SledToRegion[FirstSled.address()]; // take region info of first sled
+      if (FirstSled.Kind == CUSTOM_REGION_ENTRY) {
+        const auto PackedId = MakePackedId(FuncId, ObjId);
+        FuncIdToRegion[PackedId] =
+            SledToRegion[FirstSled.address()]; // take region info of first sled
+      }
     });
   }
   if (Verbosity()) {
@@ -127,24 +148,17 @@ const char *__xray_custom_region_kind_string(const XRayCustomRegionKind kind)
 
 XRayCustomRegionKind
 __xray_custom_region_get_kind(const int32_t region_id) XRAY_NEVER_INSTRUMENT {
-  const auto [ObjId, FuncId] = UnpackId(region_id);
-  if (const auto *pair = XRayFuncIdToRegion[ObjId].find(FuncId); pair) {
-    return static_cast<XRayCustomRegionKind>(pair->second->Kind);
-  }
-
-  printf("Invalid custom region ID: %u\n", FuncId);
-  return INVALID;
+  return get_custom_region_data<XRayCustomRegionKind>(
+      region_id, INVALID, [](const XRayCustomRegionEntry *Entry) {
+        return static_cast<XRayCustomRegionKind>(Entry->Kind);
+      });
 }
 
 const char *
 __xray_custom_region_get_name(const int32_t region_id) XRAY_NEVER_INSTRUMENT {
-  const auto [ObjId, FuncId] = UnpackId(region_id);
-  if (const auto *pair = XRayFuncIdToRegion[ObjId].find(FuncId); pair) {
-    return pair->second->Name;
-  }
-
-  printf("Invalid custom region ID: %u\n", FuncId);
-  return nullptr;
+  return get_custom_region_data<const char *>(
+      region_id, nullptr,
+      [](const XRayCustomRegionEntry *Entry) { return Entry->Name; });
 }
 
 size_t __xray_get_num_custom_regions() XRAY_NEVER_INSTRUMENT {
