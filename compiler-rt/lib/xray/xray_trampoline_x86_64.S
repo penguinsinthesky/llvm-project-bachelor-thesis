@@ -325,6 +325,7 @@ LOCAL_LABEL(typedEventCleanup):
 ASM_SYMBOL(__xray_CustomRegionEntry):
 	CFI_STARTPROC
 	SAVE_REGISTERS
+	ALIGN_STACK_16B
 
 	LOAD_HANDLER_ADDR _ZN6__xray19XRayPatchedFunctionE
 	testq %rax,%rax
@@ -337,6 +338,7 @@ ASM_SYMBOL(__xray_CustomRegionEntry):
 	callq	*%rax
 
 LOCAL_LABEL(customRegionEntryCleanup):
+    RESTORE_STACK_ALIGNMENT
 	RESTORE_REGISTERS
 	retq
 # LLVM-MCA-END
@@ -348,10 +350,11 @@ LOCAL_LABEL(customRegionEntryCleanup):
 	.global ASM_SYMBOL(__xray_CustomRegionExit)
 	.align 16, 0x90
 	ASM_TYPE_FUNCTION(__xray_CustomRegionExit)
-# LLVM-MCA-BEGIN (__xray_CustomRegionExit)
+# LLVM-MCA-BEGIN __xray_CustomRegionExit
 ASM_SYMBOL(__xray_CustomRegionExit):
 	CFI_STARTPROC
 	SAVE_REGISTERS
+	ALIGN_STACK_16B
 
 	LOAD_HANDLER_ADDR _ZN6__xray19XRayPatchedFunctionE
 	testq %rax,%rax
@@ -364,6 +367,7 @@ ASM_SYMBOL(__xray_CustomRegionExit):
 	callq	*%rax
 
 LOCAL_LABEL(customRegionExitCleanup):
+    RESTORE_STACK_ALIGNMENT
 	RESTORE_REGISTERS
 	retq
 # LLVM-MCA-END

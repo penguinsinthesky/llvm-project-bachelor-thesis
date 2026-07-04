@@ -38940,6 +38940,8 @@ X86TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
 
   case TargetOpcode::PATCHABLE_EVENT_CALL:
   case TargetOpcode::PATCHABLE_TYPED_EVENT_CALL:
+  case TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER:
+  case TargetOpcode::PATCHABLE_CUSTOM_REGION_EXIT:
     return emitPatchableEventCall(MI, BB);
 
   case X86::LCMPXCHG8B: {
