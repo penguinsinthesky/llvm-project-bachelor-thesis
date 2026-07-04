@@ -680,3 +680,7 @@ int32_t __xray_unpack_object_id(int32_t PackedId) {
 int32_t __xray_pack_id(int32_t FuncId, int32_t ObjId) {
   return __xray::MakePackedId(FuncId, ObjId);
 }
+
+bool __xray_is_dso_loaded(const int32_t ObjId) {
+  return isObjectLoaded(ObjId);
+}
