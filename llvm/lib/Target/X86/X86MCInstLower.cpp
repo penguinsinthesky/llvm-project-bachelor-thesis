@@ -1318,11 +1318,11 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
   //   .p2align 1, ...
   // .Lxray_custom_region_sled_N:
   //   jmp 12                               // jump across the entire sled
-  //   push %edi                            // stash %edi or nop if unused
+  //   push %rdi                            // stash %rdi
   //   mov %edi, <region-id>               // pass region ID via %edi
-  //   callq __xray_CustomRegion{Enter, Exit}@plt   // force dependency to
-  //   symbol pop %edi                             // restore %edi or nop if not
-  //   used <jump here>
+  //   callq __xray_CustomRegion{Enter, Exit}@plt // force dependency to symbol
+  //   pop %rdi                             // restore %rdi
+  //   <jump here>
   //
   // Patching will replace the jump with a nop so the trampoline call gets
   // executed. Unpatching simply puts the jmp back in place.
@@ -1334,7 +1334,6 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
 
   // Use a two-byte `jmp`. This version of JMP takes an 8-bit relative offset as
   // an operand (computed as an offset from the jmp instruction).
-  // TODO check actual size
   OutStreamer->emitBytes("\xeb\x0C"); // jmp over 12 bytes of the sled
 
   // stash the full %rdi on the stack
