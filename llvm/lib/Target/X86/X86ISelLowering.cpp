@@ -38940,9 +38940,15 @@ X86TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
 
   case TargetOpcode::PATCHABLE_EVENT_CALL:
   case TargetOpcode::PATCHABLE_TYPED_EVENT_CALL:
-  case TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER:
-  case TargetOpcode::PATCHABLE_CUSTOM_REGION_EXIT:
     return emitPatchableEventCall(MI, BB);
+  case TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER:
+  case TargetOpcode::PATCHABLE_CUSTOM_REGION_EXIT: {
+    MachineFunction &MF = *BB->getParent();
+
+    MF.getFrameInfo().setAdjustsStack(true);
+    return BB;
+    // TODO do anything else? inserting CALLSEQs seems to break stuff
+  }
 
   case X86::LCMPXCHG8B: {
     const X86RegisterInfo *TRI = Subtarget.getRegisterInfo();
