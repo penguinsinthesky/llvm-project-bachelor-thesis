@@ -5,7 +5,6 @@
 #include "sanitizer_common/sanitizer_dense_map.h"
 #include "xray/xray_defs.h"
 #include "xray_allocator.h"
-#include <cstdio>
 
 // TODO not really sure why using DenseMap needs this
 #include <new>
@@ -17,25 +16,20 @@ using namespace __xray;
 
 using IdRegionMap = DenseMap<int32_t, const XRayCustomRegionEntry *>;
 
+/// Maps custom regions' function IDs to custom region information.
+/// Note this uses packed IDs as keys so one map can serve all DSOs.
+static IdRegionMap XRayFuncIdToRegion;
+
+/// Guards writes to the map above
 static SpinMutex XRayFuncIdToRegionMutex;
-static IdRegionMap *XRayFuncIdToRegion;
 
 template <typename R, class InfoFn>
 static R get_custom_region_data(const int32_t region_id, R invalid, InfoFn Fn) {
-  const auto [ObjId, FuncId] = UnpackId(region_id);
-
-  if (!__xray_is_dso_loaded(ObjId)) {
-    Report("Object %d is not loaded\n", ObjId);
-    return invalid;
-  }
-
-  IdRegionMap &RegionMap = XRayFuncIdToRegion[ObjId];
-
-  if (const auto *pair = RegionMap.find(FuncId)) {
+  if (const auto *pair = XRayFuncIdToRegion.find(region_id)) {
     return Fn(pair->second);
   }
 
-  Report("Invalid custom region ID: %d\n", FuncId);
+  Report("Invalid custom region ID: %d\n", region_id);
   return invalid;
 }
 
@@ -52,12 +46,6 @@ extern const XRaySledToCustomRegionMapping __start_xray_sled_to_custom_region[]
     __attribute__((weak));
 extern const XRaySledToCustomRegionMapping __stop_xray_sled_to_custom_region[]
     __attribute__((weak));
-
-void __xray_allocate_custom_region_buffer() {
-  // static allocation of ~6KB with 256 objects
-  // maps will then use mmap to allocate space for entries
-  XRayFuncIdToRegion = allocateBuffer<IdRegionMap>(XRayMaxObjects);
-}
 
 bool __xray_register_custom_regions(const XRaySledMap &InstrMap,
                                     const int32_t ObjId) XRAY_NEVER_INSTRUMENT {
@@ -123,7 +111,7 @@ bool __xray_register_custom_regions(const XRaySledMap &InstrMap,
 
   {
     SpinMutexLock Guard(&XRayFuncIdToRegionMutex);
-    XRayFuncIdToRegion[ObjId] =
+    XRayFuncIdToRegion =
         FuncIdToRegion; // FIXME move-constructor broken, use when fixed
     return true;
   }

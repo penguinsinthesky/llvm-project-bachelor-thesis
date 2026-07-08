@@ -59,8 +59,6 @@ struct XRaySledToCustomRegionMapping {
   }
 };
 
-void __xray_allocate_custom_region_buffer();
-
 bool __xray_register_custom_regions(const __xray::XRaySledMap &InstrMap,
                                     int32_t ObjId);
 }

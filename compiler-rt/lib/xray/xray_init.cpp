@@ -142,8 +142,6 @@ void __xray_init() XRAY_NEVER_INSTRUMENT {
 
   // Pre-allocation takes up approx. 5kB for XRayMaxObjects=64.
   XRayInstrMaps = allocateBuffer<XRaySledMap>(XRayMaxObjects);
-  // also pre-allocate buffer for custom region id mappings
-  __xray_allocate_custom_region_buffer();
 
   int MainBinaryId =
       __xray_register_sleds(__start_xray_instr_map, __stop_xray_instr_map,
@@ -155,7 +153,6 @@ void __xray_init() XRAY_NEVER_INSTRUMENT {
     return;
   }
 
-  // TODO support DSOs for custom regions
   if (!__xray_register_custom_regions(XRayInstrMaps[MainBinaryId],
                                       MainBinaryId)) {
     Report("Registering  XRay custom regions failed\n");

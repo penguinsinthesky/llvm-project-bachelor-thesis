@@ -109,8 +109,6 @@ extern int32_t __xray_register_dso(const XRaySledEntry *SledsBegin,
                                    XRayTrampolines Trampolines);
 
 extern bool __xray_deregister_dso(int32_t ObjId);
-
-extern bool __xray_is_dso_loaded(int32_t ObjId);
 }
 
 namespace __xray {
