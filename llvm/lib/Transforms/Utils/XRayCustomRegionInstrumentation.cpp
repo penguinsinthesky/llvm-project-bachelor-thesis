@@ -117,7 +117,7 @@ XRayCustomRegionInserter::forUserPlaced(const StringRef RegionName,
 }
 
 XRayCustomRegionInserter
-XRayCustomRegionInserter::forLoop(const Loop &Loop, StringRef RegionName) {
+XRayCustomRegionInserter::forLoop(const Loop &Loop, const Twine &RegionName) {
   Function *ParentFunction = Loop.getHeader()->getParent();
   auto *RegionInfoGlobal = createRegionInfoGlobal(
       XRayCustomRegionKind::LOOP, RegionName, *ParentFunction->getParent());

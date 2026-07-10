@@ -1,10 +1,32 @@
 #include "llvm/Transforms/Instrumentation/XRayLoopInstrument.h"
 
 #include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/PostDominators.h"
 #include "llvm/Transforms/Utils/XRayCustomRegionInstrumentation.h"
 
 namespace llvm {
+
+static std::optional<StringRef> getRegionName(const Loop &L) {
+  if (const MDNode *ID = L.getLoopID()) {
+    for (const Metadata *Op : ID->operands()) {
+      if (const auto *OpNode = dyn_cast<MDNode>(Op)) {
+        if (OpNode->getNumOperands() == 2 &&
+            OpNode->getOperand(0).equalsStr("llvm.loop.xray.instrument")) {
+          if (const MDString *RegionName =
+                  dyn_cast<MDString>(OpNode->getOperand(1))) {
+            return std::make_optional(RegionName->getString());
+          }
+
+          reportFatalInternalError(
+              "\"llvm.loop.xray.instrument\" loop metadata node must contain a "
+              "string as second operand");
+        }
+      }
+    }
+  }
+
+  return std::nullopt;
+}
+
 static void
 findBodyStartBlocks(const Loop &L,
                     SmallVectorImpl<BasicBlock *> &BodyStartBlocks) {
@@ -51,43 +73,7 @@ static void findEndBlocks(const Loop &L,
   }
 }
 
-PreservedAnalyses XRayLoopInstrumentPass::run(Loop &L, LoopAnalysisManager &,
-                                              LoopStandardAnalysisResults &,
-                                              LPMUpdater &) {
-
-  const std::optional<StringRef> RegionName = getRegionName(L);
-  if (!RegionName.has_value()) {
-    // not annotated
-    return PreservedAnalyses::all();
-  }
-  instrumentLoop(L, RegionName.value());
-
-  return PreservedAnalyses::none();
-}
-
-std::optional<StringRef> XRayLoopInstrumentPass::getRegionName(const Loop &L) {
-  if (const MDNode *ID = L.getLoopID()) {
-    for (const Metadata *Op : ID->operands()) {
-      if (const auto *OpNode = dyn_cast<MDNode>(Op)) {
-        if (OpNode->getNumOperands() == 2 &&
-            OpNode->getOperand(0).equalsStr("llvm.loop.xray.instrument")) {
-          if (const MDString *RegionName =
-                  dyn_cast<MDString>(OpNode->getOperand(1))) {
-            return std::make_optional(RegionName->getString());
-          }
-
-          reportFatalInternalError(
-              "\"llvm.loop.xray.instrument\" loop metadata node must contain a "
-              "string as second operand");
-        }
-      }
-    }
-  }
-
-  return std::nullopt;
-}
-void XRayLoopInstrumentPass::instrumentLoop(const Loop &L,
-                                            const StringRef RegionName) {
+static void instrumentLoopBody(const Loop &L, const Twine &RegionName) {
   SmallVector<BasicBlock *, 1> BodyStartBlocks;
   SmallVector<BasicBlock *, 2> BodyEndBlocks;
 
@@ -111,6 +97,43 @@ void XRayLoopInstrumentPass::instrumentLoop(const Loop &L,
     Builder.SetInsertPoint(EndBlock->getTerminator());
     Inserter.insertExit(Builder);
   }
+}
+
+PreservedAnalyses XRayLoopInstrumentPass::run(Loop &L, LoopAnalysisManager &,
+                                              LoopStandardAnalysisResults &,
+                                              LPMUpdater &) {
+  const std::optional<StringRef> RegionName = getRegionName(L);
+  if (!RegionName.has_value()) {
+    // not annotated
+    return PreservedAnalyses::all();
+  }
+
+  instrumentLoopBody(L, RegionName.value());
+
+  return PreservedAnalyses::none();
+}
+
+PreservedAnalyses
+XRayOuterLoopInstrumentPass::run(Function &F, FunctionAnalysisManager &FAM) {
+  const auto &LI = FAM.getResult<LoopAnalysis>(F);
+
+  bool Modified = false;
+  int I = 0;
+
+  // iterating over LoopInfo yields outer loops only
+  for (const auto *OuterLoop : LI) {
+    if (getRegionName(*OuterLoop).has_value()) {
+      // loop is explicitly instrumented, don't touch here
+      continue;
+    }
+
+    instrumentLoopBody(*OuterLoop,
+                       "<outer-loop-" + Twine(I++) + ">" + F.getName());
+
+    Modified = true;
+  }
+
+  return Modified ? PreservedAnalyses::none() : PreservedAnalyses::all();
 }
 
 } // namespace llvm

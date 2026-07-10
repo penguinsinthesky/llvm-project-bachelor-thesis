@@ -3388,6 +3388,12 @@ defm xray_instrument_inlined : BoolFOption<"xray-instrument-inlined",
                                       "Also generate XRay instrumentation sleds on entry/exit of inlined functions">,
                               NegFlag<SetFalse>>;
 
+defm xray_instrument_outer_loops : BoolFOption<"xray-instrument-outer-loops",
+                              CodeGenOpts<"XRayInstrumentOuterLoops">, DefaultFalse,
+                              PosFlag<SetTrue, [], [ClangOption, CC1Option],
+                                      "Automatically perform XRay instrumentation on bodies of outer loops in all functions">,
+                              NegFlag<SetFalse>>;
+
 defm xray_shared : BoolFOption<"xray-shared",
   CodeGenOpts<"XRayShared">, DefaultFalse,
   PosFlag<SetTrue, [], [ClangOption, CC1Option],

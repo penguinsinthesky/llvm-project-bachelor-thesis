@@ -1109,10 +1109,14 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
           });
 
     if (CodeGenOpts.XRayInstrumentFunctions) {
-      PB.registerPipelineStartEPCallback([](ModulePassManager &MPM,
+      PB.registerPipelineStartEPCallback([&](ModulePassManager &MPM,
                                             OptimizationLevel Level) {
         FunctionPassManager FPM;
         FPM.addPass(LoopSimplifyPass());
+        if (CodeGenOpts.XRayInstrumentOuterLoops) {
+          FPM.addPass(XRayOuterLoopInstrumentPass());
+        }
+
         FPM.addPass(createFunctionToLoopPassAdaptor(XRayLoopInstrumentPass()));
         MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
       });

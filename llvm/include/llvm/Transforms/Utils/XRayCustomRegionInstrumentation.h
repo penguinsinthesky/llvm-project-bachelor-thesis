@@ -80,7 +80,7 @@ public:
                                                 Module &Module);
 
   static XRayCustomRegionInserter forLoop(const Loop &Loop,
-                                          StringRef RegionName);
+                                          const Twine &RegionName);
 
   CallInst *insertEnter(IRBuilderBase &Builder);
 
