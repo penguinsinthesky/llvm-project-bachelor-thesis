@@ -1,11 +1,12 @@
 #include "llvm/CodeGen/XRayCustomRegionFiltering.h"
 
 #include "../../../compiler-rt/include/xray/xray_custom_region_kind.h"
+#include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineFunction.h"
-#include "llvm/CodeGen/MachineFunctionAnalysis.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
+#include "llvm/CodeGen/Passes.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Transforms/Utils/XRayCustomRegionInstrumentation.h"

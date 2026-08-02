@@ -4,6 +4,8 @@
 // TODO check if there is a better way of including this
 #include "../../../../compiler-rt/include/xray/xray_custom_region_kind.h"
 
+#include "llvm/IR/Module.h"
+
 namespace llvm {
 
 constexpr static StringRef InlinedFunctionInfoMDKey =

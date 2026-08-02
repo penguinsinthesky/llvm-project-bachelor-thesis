@@ -90,7 +90,7 @@ struct LoopAttributes {
 
   /// If this holds a value, the loop should be instrumented by XRay with the
   /// contained region name.
-  std::optional<StringRef> XRayRegionName;
+  std::optional<llvm::StringRef> XRayRegionName;
 };
 
 /// Information used when generating a structured loop.
@@ -311,7 +311,7 @@ public:
   void setMustProgress(bool P) { StagedAttrs.MustProgress = P; }
 
   /// Set name of XRay region for this loop
-  void setXRayRegionName(StringRef RegionName) {
+  void setXRayRegionName(llvm::StringRef RegionName) {
     StagedAttrs.XRayRegionName = std::make_optional(RegionName);
   }
 

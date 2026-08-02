@@ -6,6 +6,8 @@ enum XRayCustomRegionKind : int;
 
 #include "llvm/ADT/DenseMapInfo.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/IRBuilder.h"
 
 namespace llvm {
 
