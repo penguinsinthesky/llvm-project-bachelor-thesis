@@ -2136,18 +2136,6 @@ def int_pseudoprobe : DefaultAttrsIntrinsic<[],
                         [llvm_i64_ty, llvm_i64_ty, llvm_i32_ty, llvm_i64_ty],
                         [IntrInaccessibleMemOnly]>;
 
-// Intrinsic which is called to mark a position in a block where an XRay
-// instrumentation sled should be inserted.
-// This is used for selecting instrumentation points at IR level which would otherwise
-// only happen in MIR.
-// Its only parameter is the pointer to a global variable containing information about this custom region.
-// Like `int_sideeffect`, it is set to have some memory access to ensure it
-// will not be moved around.
-def int_xray_customregionenter : DefaultAttrsIntrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
-
-// Same as `int_xray_customregionenter` but for marking exits of custom XRay instrumentation regions.
-def int_xray_customregionexit : DefaultAttrsIntrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
-
 // Saturating floating point to integer intrinsics
 let IntrProperties = [IntrNoMem, IntrSpeculatable, IntrNoCreateUndefOrPoison]
   in {
@@ -2594,6 +2582,18 @@ def int_xray_customevent : Intrinsic<[], [llvm_ptr_ty, llvm_i64_ty],
 def int_xray_typedevent : Intrinsic<[], [llvm_i64_ty, llvm_ptr_ty, llvm_i64_ty],
                                         [IntrWriteMem, NoCapture<ArgIndex<1>>,
                                          ReadOnly<ArgIndex<1>>]>;
+
+// Intrinsic which is called to mark a position in a block where an XRay
+// instrumentation sled should be inserted.
+// This is used for selecting instrumentation points at IR level which would otherwise
+// only happen in MIR.
+// Its only parameter is the pointer to a global variable containing information about this custom region.
+// Like `int_sideeffect`, it is set to have some memory access to ensure it
+// will not be moved around.
+def int_xray_customregionenter : DefaultAttrsIntrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
+
+// Same as `int_xray_customregionenter` but for marking exits of custom XRay instrumentation regions.
+def int_xray_customregionexit : DefaultAttrsIntrinsic<[], [llvm_ptr_ty], [IntrInaccessibleMemOnly]>;
 //===----------------------------------------------------------------------===//
 
 //===------ Memory intrinsics with element-wise atomicity guarantees ------===//
