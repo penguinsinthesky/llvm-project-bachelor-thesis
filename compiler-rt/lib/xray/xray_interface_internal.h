@@ -201,7 +201,8 @@ bool enumerate_functions(const XRaySledMap &InstrMap,
       }
     }
 
-    Handler(FuncId++, XRayFunctionSledIndex{StartSled, NumSledsInFunction});
+    Handler(FuncId++, XRayFunctionSledIndex{.Begin = StartSled,
+                                            .Size = NumSledsInFunction});
   }
   return true;
 }
