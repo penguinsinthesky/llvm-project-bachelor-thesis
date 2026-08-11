@@ -5168,9 +5168,6 @@ void AsmPrinter::emitXRayTable() {
     OutStreamer->emitLabel(RegionSledsEnd);
 
     if (FnSledIndex) {
-      MCSection *SledEntriesInsertSection =
-          OutStreamer->getCurrentSectionOnly();
-
       OutStreamer->switchSection(FnSledIndex);
       OutStreamer->emitValueToAlignment(Align(WordSizeBytes));
 
@@ -5185,7 +5182,7 @@ void AsmPrinter::emitXRayTable() {
       OutStreamer->emitValueImpl(
           MCConstantExpr::create(RegionSleds.size(), Ctx), WordSizeBytes);
 
-      OutStreamer->switchSection(SledEntriesInsertSection);
+      OutStreamer->switchSection(InstMap);
     }
   }
 
@@ -5201,10 +5198,6 @@ void AsmPrinter::emitXRayTable() {
 
 void AsmPrinter::emitXRayCustomRegionData(
     MCSection *SledToCustomRegionSection) {
-  // First, emit name strings so they can be referenced from custom region info
-  // data. These strings cannot be stored in-line with custom region info data
-  // as this needs to have equal size for all regions.
-
   auto &Ctx = OutContext;
   const auto WordSizeBytes = MAI.getCodePointerSize();
 
