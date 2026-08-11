@@ -1218,6 +1218,7 @@ void TargetPassConfig::addMachinePasses() {
   // Insert before XRay Instrumentation.
   addPass(&FEntryInserterID);
 
+  addPass(&XRayInlinedRegionsFilterID);
   addPass(&XRayInstrumentationID);
   addPass(&PatchableFunctionID);
 

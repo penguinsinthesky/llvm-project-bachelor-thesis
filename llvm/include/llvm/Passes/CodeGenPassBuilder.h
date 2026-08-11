@@ -898,8 +898,8 @@ Error CodeGenPassBuilder<Derived, TargetMachineT>::addMachinePasses(
   // Insert before XRay Instrumentation.
   addMachineFunctionPass(FEntryInserterPass(), PMW);
 
-  addMachineFunctionPass(XRayInstrumentationPass(), PMW);
   addMachineFunctionPass(XRayInlinedRegionFilterPass(), PMW);
+  addMachineFunctionPass(XRayInstrumentationPass(), PMW);
   addMachineFunctionPass(PatchableFunctionPass(), PMW);
 
   derived().addPreEmitPass(PMW);
