@@ -33,9 +33,9 @@ XRayInlinedFunctionInfo::XRayInlinedFunctionInfo(const MDNode *MD) : MD(MD) {}
 
 XRayCustomRegionInfo
 XRayCustomRegionInfo::fromIntrinsicCall(const CallInst &Call) {
-  assert(Call.getIntrinsicID() == Intrinsic::xray_customregionenter ||
-         Call.getIntrinsicID() == Intrinsic::xray_customregionexit &&
-             "CallInst must call an XRay custom region intrinsic");
+  assert((Call.getIntrinsicID() == Intrinsic::xray_customregionenter ||
+          Call.getIntrinsicID() == Intrinsic::xray_customregionexit) &&
+         "CallInst must call an XRay custom region intrinsic");
   assert(Call.arg_size() == 1 &&
          "Call to XRay custom region intrinsic must have exactly one argument");
 
