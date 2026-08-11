@@ -220,7 +220,8 @@ void InMemoryRawLog(int32_t FuncId, XRayEntryType Type,
       auto Delta = TSC - StackTop.TSC;
       if (Delta < atomic_load(&ThresholdTicks, memory_order_relaxed)) {
         DCHECK(TLD.BufferOffset > 0);
-        TLD.BufferOffset -= StackTop.Type == XRayEntryType::ENTRY ? 1 : 2;
+        TLD.BufferOffset -= StackTop.Type == XRayEntryType::ENTRY ||
+                    StackTop.Type == XRayEntryType::CUSTOM_REGION_ENTRY ? 1 : 2;
         return;
       }
     }
