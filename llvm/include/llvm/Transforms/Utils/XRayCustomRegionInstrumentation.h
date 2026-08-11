@@ -99,6 +99,8 @@ private:
 
   GlobalVariable *RegionInfoGlobal;
 
+  CallInst *insertProbe(IRBuilderBase &Builder, Intrinsic::ID Intrinsic);
+
   static StructType *getRegionInfoType(const Module &M);
 };
 
