@@ -84,9 +84,9 @@ public:
   static XRayCustomRegionInserter forLoop(const Loop &Loop,
                                           const Twine &RegionName);
 
-  CallInst *insertEnter(IRBuilderBase &Builder);
+  Value *insertEnter(IRBuilderBase &Builder);
 
-  CallInst *insertExit(IRBuilderBase &Builder);
+  Value *insertExit(IRBuilderBase &Builder);
 
   constexpr static StringRef SectionName = "xray_custom_regions";
 
@@ -99,7 +99,7 @@ private:
 
   GlobalVariable *RegionInfoGlobal;
 
-  CallInst *insertProbe(IRBuilderBase &Builder, Intrinsic::ID Intrinsic);
+  Value *insertProbe(IRBuilderBase &Builder, Intrinsic::ID Intrinsic);
 
   static StructType *getRegionInfoType(const Module &M);
 };

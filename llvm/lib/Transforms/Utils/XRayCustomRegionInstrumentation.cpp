@@ -127,11 +127,11 @@ XRayCustomRegionInserter::forLoop(const Loop &Loop, const Twine &RegionName) {
   return XRayCustomRegionInserter(RegionInfoGlobal);
 }
 
-CallInst *XRayCustomRegionInserter::insertEnter(IRBuilderBase &Builder) {
+Value *XRayCustomRegionInserter::insertEnter(IRBuilderBase &Builder) {
   return insertProbe(Builder, Intrinsic::xray_customregionenter);
 }
 
-CallInst *XRayCustomRegionInserter::insertExit(IRBuilderBase &Builder) {
+Value *XRayCustomRegionInserter::insertExit(IRBuilderBase &Builder) {
   return insertProbe(Builder, Intrinsic::xray_customregionexit);
 }
 
@@ -167,9 +167,9 @@ XRayCustomRegionInserter::XRayCustomRegionInserter(
     GlobalVariable *RegionInfoGlobal)
     : RegionInfoGlobal(RegionInfoGlobal) {}
 
-CallInst *XRayCustomRegionInserter::insertProbe(IRBuilderBase &Builder,
-                                                const Intrinsic::ID Intrinsic) {
-  return Builder.CreateIntrinsic(Intrinsic, {RegionInfoGlobal});
+Value *XRayCustomRegionInserter::insertProbe(IRBuilderBase &Builder,
+                                             const Intrinsic::ID Intrinsic) {
+  return Builder.CreateUnaryIntrinsic(Intrinsic, RegionInfoGlobal);
 }
 
 StructType *XRayCustomRegionInserter::getRegionInfoType(const Module &M) {

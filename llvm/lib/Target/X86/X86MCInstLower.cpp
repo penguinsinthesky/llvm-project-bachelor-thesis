@@ -1329,7 +1329,7 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
 
   auto *CurSled = OutContext.createTempSymbol("xray_custom_region_sled_", true);
   // make sure that the sled address is aligned
-  OutStreamer->emitCodeAlignment(Align(2), &getSubtargetInfo());
+  OutStreamer->emitCodeAlignment(Align(2), getSubtargetInfo());
   OutStreamer->emitLabel(CurSled);
 
   // Use a two-byte `jmp`. This version of JMP takes an 8-bit relative offset as
