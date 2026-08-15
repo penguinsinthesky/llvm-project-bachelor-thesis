@@ -169,7 +169,7 @@ XRayCustomRegionInserter::XRayCustomRegionInserter(
 
 Value *XRayCustomRegionInserter::insertProbe(IRBuilderBase &Builder,
                                              const Intrinsic::ID Intrinsic) {
-  return Builder.CreateUnaryIntrinsic(Intrinsic, RegionInfoGlobal);
+  return Builder.CreateIntrinsic(Intrinsic, {RegionInfoGlobal});
 }
 
 StructType *XRayCustomRegionInserter::getRegionInfoType(const Module &M) {
