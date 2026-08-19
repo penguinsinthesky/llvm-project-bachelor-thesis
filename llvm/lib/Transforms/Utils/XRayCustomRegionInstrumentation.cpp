@@ -153,10 +153,9 @@ GlobalVariable *XRayCustomRegionInserter::createRegionInfoGlobal(
   Constant *StructLiteral =
       ConstantStruct::get(StructTy, {KindConstant, RegionNameGlobal});
 
-  // use internal leakage so this global appears in the symbol table
   auto *RegionInfoGlobal =
-      new GlobalVariable(M, StructTy, true, GlobalValue::InternalLinkage,
-                         StructLiteral, RegionName);
+      new GlobalVariable(M, StructTy, true, GlobalValue::PrivateLinkage,
+                         StructLiteral, "xray_custom_region");
   // store this in our own section
   RegionInfoGlobal->setSection(SectionName);
 
