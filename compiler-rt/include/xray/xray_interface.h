@@ -56,6 +56,8 @@ enum XRayEntryType {
 /// To prevent circular calling, the handler function itself and all its
 /// direct&indirect callees must not be instrumented with XRay, which can be
 /// achieved by marking them all with: __attribute__((xray_never_instrument))
+/// The user handler must not use memory which can alias with memory used
+/// in instrumented code.
 ///
 /// Returns 1 on success, 0 on error.
 extern int __xray_set_handler(void (*entry)(int32_t, enum XRayEntryType));
