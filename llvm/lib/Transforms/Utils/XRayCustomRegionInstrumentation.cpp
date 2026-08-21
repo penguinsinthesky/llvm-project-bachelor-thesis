@@ -168,6 +168,9 @@ XRayCustomRegionInserter::XRayCustomRegionInserter(
 
 Value *XRayCustomRegionInserter::insertProbe(IRBuilderBase &Builder,
                                              const Intrinsic::ID Intrinsic) {
+  // mark function so codegen knows this function may contain sleds
+  Builder.GetInsertBlock()->getParent()->addFnAttr(
+      "xray-contains-custom-region");
   return Builder.CreateIntrinsic(Intrinsic, {RegionInfoGlobal});
 }
 

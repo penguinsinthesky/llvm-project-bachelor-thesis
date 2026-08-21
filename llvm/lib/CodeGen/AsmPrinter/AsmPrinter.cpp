@@ -3260,6 +3260,7 @@ void AsmPrinter::SetupMachineFunction(MachineFunction &MF) {
       F.hasFnAttribute("tail-pad-to-size") ||
       F.hasFnAttribute("function-instrument") ||
       F.hasFnAttribute("xray-instruction-threshold") ||
+      F.hasFnAttribute("xray-contains-custom-region") ||
       needFuncLabels(MF, *this) || NeedsLocalForSize ||
       MF.getTarget().Options.EmitStackSizeSection ||
       MF.getTarget().Options.EmitCallGraphSection ||
