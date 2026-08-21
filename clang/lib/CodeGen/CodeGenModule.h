@@ -732,7 +732,7 @@ private:
   // The list is sorted for binary-searching.
   std::vector<std::string> MSHotPatchFunctions;
 
-  llvm::DenseMap<StringRef, llvm::XRayCustomRegionInserter> XRayCustomRegions;
+  llvm::StringMap<llvm::XRayCustomRegionInserter> XRayCustomRegions;
 
 public:
   CodeGenModule(ASTContext &C, IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS,
