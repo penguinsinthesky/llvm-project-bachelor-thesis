@@ -4,6 +4,7 @@
 // TODO check if there is a better way of including this
 #include "../../../../compiler-rt/include/xray/xray_custom_region_kind.h"
 
+#include "llvm/Demangle/Demangle.h"
 #include "llvm/IR/Module.h"
 
 namespace llvm {
@@ -90,10 +91,11 @@ const ConstantStruct *XRayCustomRegionInfo::regionInfo() const {
 
 XRayCustomRegionInserter
 XRayCustomRegionInserter::forInlinedFunction(Function &OriginalFunction) {
+  const std::string FnName = demangle(OriginalFunction.getName());
   LLVMContext &Ctx = OriginalFunction.getContext();
   auto *RegionInfoGlobal = createRegionInfoGlobal(
-      XRayCustomRegionKind::INLINED_FUNCTION,
-      "<inlined>" + OriginalFunction.getName(), *OriginalFunction.getParent());
+      XRayCustomRegionKind::INLINED_FUNCTION, Twine("<inlined>") + FnName,
+      *OriginalFunction.getParent());
 
   const uint64_t XRayThreshold = OriginalFunction.getFnAttributeAsParsedInteger(
       "xray-instruction-threshold", std::numeric_limits<uint64_t>::max());
