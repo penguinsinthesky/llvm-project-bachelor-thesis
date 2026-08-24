@@ -5116,7 +5116,7 @@ void AsmPrinter::emitXRayTable() {
         WordSizeBytes);
     OutStreamer->emitValueImpl(
         MCBinaryExpr::createSub(
-            MCSymbolRefExpr::create(CurrentFnBegin, Ctx),
+            MCSymbolRefExpr::create(Sled.Function, Ctx),
             MCBinaryExpr::createAdd(MCSymbolRefExpr::create(Dot, Ctx),
                                     MCConstantExpr::create(WordSizeBytes, Ctx),
                                     Ctx),
@@ -5263,7 +5263,7 @@ void AsmPrinter::recordCustomRegionSled(MCSymbol *Sled, const MachineInstr &MI,
 
   // TODO use global addr as function here?
   const auto FunctionEntry = XRayFunctionEntry{
-      Sled, CurrentFnSym, Kind, AlwaysInstrument, &F, Version};
+      Sled, getSymbol(RegionInfoGlobal), Kind, AlwaysInstrument, &F, Version};
 
   if (const auto ExistingRegion = CustomRegionInfos.find(RegionInfoGlobal);
       ExistingRegion != CustomRegionInfos.end()) {
