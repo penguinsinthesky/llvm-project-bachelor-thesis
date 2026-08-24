@@ -1357,7 +1357,7 @@ void X86AsmPrinter::LowerCustomRegionProbe(const MachineInstr &MI,
   OutStreamer->AddComment("xray custom region end.");
 
   // record so sled entry & custom region info entry will be emitted
-  recordCustomRegionSled(CurSled, MI, SK);
+  recordCustomRegionSled(CurSled, MI, SK, 2);
 }
 
 void X86AsmPrinter::LowerPATCHABLE_FUNCTION_ENTER(const MachineInstr &MI,

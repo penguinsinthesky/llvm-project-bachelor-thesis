@@ -434,7 +434,7 @@ public:
                   uint8_t Version = 0);
 
   void recordCustomRegionSled(MCSymbol *Sled, const MachineInstr &MI,
-                              SledKind Kind, uint8_t Version = 0);
+                              SledKind Kind, uint8_t Version);
 
   /// Emit a table with all XRay instrumentation points.
   void emitXRayTable();
