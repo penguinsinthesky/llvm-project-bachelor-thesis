@@ -157,7 +157,7 @@ GlobalVariable *XRayCustomRegionInserter::createRegionInfoGlobal(
 
   auto *RegionInfoGlobal =
       new GlobalVariable(M, StructTy, true, GlobalValue::InternalLinkage,
-                         StructLiteral, "xray_custom_region");
+                         StructLiteral, RegionName);
   // store this in our own section
   RegionInfoGlobal->setSection(SectionName);
 
