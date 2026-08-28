@@ -2,11 +2,12 @@
 #define LLVM_XRAYCUSTOMREGIONFILTERING_H
 
 #include "llvm/CodeGen/MachineFunctionAnalysisManager.h"
+#include "llvm/IR/PassManager.h"
 
 namespace llvm {
 
 class XRayInlinedRegionFilterPass
-    : public PassInfoMixin<XRayInlinedRegionFilterPass> {
+    : public RequiredPassInfoMixin<XRayInlinedRegionFilterPass> {
 public:
   XRayInlinedRegionFilterPass() = default;
 

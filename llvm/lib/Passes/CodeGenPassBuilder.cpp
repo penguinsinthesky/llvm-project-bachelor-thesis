@@ -99,6 +99,7 @@
 #include "llvm/CodeGen/VirtRegMap.h"
 #include "llvm/CodeGen/WasmEHPrepare.h"
 #include "llvm/CodeGen/WinEHPrepare.h"
+#include "llvm/CodeGen/XRayCustomRegionFiltering.h"
 #include "llvm/CodeGen/XRayInstrumentation.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Verifier.h"
@@ -685,6 +686,7 @@ Error CodeGenPassBuilder::addMachinePasses(PassManagerWrapper &PMW) {
   // Insert before XRay Instrumentation.
   addMachineFunctionPass(FEntryInserterPass(), PMW);
 
+  addMachineFunctionPass(XRayInlinedRegionFilterPass(), PMW);
   addMachineFunctionPass(XRayInstrumentationPass(), PMW);
   addMachineFunctionPass(PatchableFunctionPass(), PMW);
 
