@@ -56,7 +56,9 @@ static void findEndBlocks(const Loop &L,
   BasicBlock *Latch = L.getLoopLatch();
 
   // the latch is a loop exit
-  EndBlocks.push_back(Latch);
+  if (Latch != nullptr) {
+    EndBlocks.push_back(Latch);
+  }
 
   // all exiting blocks are end blocks (can be caused by a break)
   SmallVector<BasicBlock *, 2> ExitingBlocks;
