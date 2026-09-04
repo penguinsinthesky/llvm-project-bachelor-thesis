@@ -17,6 +17,8 @@ public:
 
   uint64_t getInstructionThreshold() const;
 
+  bool alwaysInstrument() const;
+
 private:
   const MDNode *MD;
 

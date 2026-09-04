@@ -30,6 +30,13 @@ uint64_t XRayInlinedFunctionInfo::getInstructionThreshold() const {
       ->getZExtValue();
 }
 
+bool XRayInlinedFunctionInfo::alwaysInstrument() const {
+  const Metadata *AlwaysInstrument = MD->getOperand(2);
+  return cast<ConstantInt>(
+             cast<ConstantAsMetadata>(AlwaysInstrument)->getValue())
+      ->isOne();
+}
+
 XRayInlinedFunctionInfo::XRayInlinedFunctionInfo(const MDNode *MD) : MD(MD) {}
 
 XRayCustomRegionInfo
@@ -100,12 +107,18 @@ XRayCustomRegionInserter::forInlinedFunction(Function &OriginalFunction) {
   const uint64_t XRayThreshold = OriginalFunction.getFnAttributeAsParsedInteger(
       "xray-instruction-threshold", std::numeric_limits<uint64_t>::max());
 
+  const auto InstrAttr = OriginalFunction.getFnAttribute("function-instrument");
+  const bool AlwaysInstrument = InstrAttr.isStringAttribute() &&
+                                InstrAttr.getValueAsString() == "xray-always";
+
   auto *OriginalFunctionMD = ConstantAsMetadata::get(&OriginalFunction);
   auto *InstructionThresholdMD = ConstantAsMetadata::get(
       ConstantInt::get(Type::getInt64Ty(Ctx), XRayThreshold));
+  auto *AlwaysInstrumentMD =
+      ConstantAsMetadata::get(ConstantInt::getBool(Ctx, AlwaysInstrument));
 
-  auto *AdditionalMD =
-      MDNode::get(Ctx, {OriginalFunctionMD, InstructionThresholdMD});
+  auto *AdditionalMD = MDNode::get(
+      Ctx, {OriginalFunctionMD, InstructionThresholdMD, AlwaysInstrumentMD});
   RegionInfoGlobal->addMetadata(InlinedFunctionInfoMDKey, *AdditionalMD);
 
   return XRayCustomRegionInserter(RegionInfoGlobal);
