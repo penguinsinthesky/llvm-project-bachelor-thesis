@@ -159,12 +159,18 @@ public:
 
     bool Modified = false;
 
-    // TODO respect loops
+    // TODO respect loops like XRayInstrumentation.cpp
 
     for (auto &[RegionInfo, Instructions] : RegionInstructions) {
       const auto InlinedFunctionInfo = RegionInfo.getInlinedFunctionInfo();
       const uint64_t Threshold = InlinedFunctionInfo.getInstructionThreshold();
       const uint64_t InstCount = Instructions.countInstructions();
+
+      if (InlinedFunctionInfo.alwaysInstrument()) {
+        // do not filter inlined regions originating from functions
+        // annotated with xray_always_instrument
+        continue;
+      }
 
       if (InstCount < Threshold) {
         // region does not contain enough instructions -> remove again
