@@ -32,6 +32,8 @@ enum XRayInstrOrdinal : XRayInstrMask {
   XRIO_FunctionExit,
   XRIO_Custom,
   XRIO_Typed,
+  XRIO_CustomRegionEntry,
+  XRIO_CustomRegionExit,
   XRIO_Count
 };
 
@@ -40,6 +42,8 @@ constexpr XRayInstrMask FunctionEntry = 1U << XRIO_FunctionEntry;
 constexpr XRayInstrMask FunctionExit = 1U << XRIO_FunctionExit;
 constexpr XRayInstrMask Custom = 1U << XRIO_Custom;
 constexpr XRayInstrMask Typed = 1U << XRIO_Typed;
+constexpr XRayInstrMask CustomRegionEntry = 1U << XRIO_CustomRegionEntry;
+constexpr XRayInstrMask CustomRegionExit = 1U << XRIO_CustomRegionExit;
 constexpr XRayInstrMask All = FunctionEntry | FunctionExit | Custom | Typed;
 
 } // namespace XRayInstrKind

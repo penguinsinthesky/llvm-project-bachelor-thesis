@@ -3368,7 +3368,7 @@ def fno_xray_link_deps : Flag<["-"], "fno-xray-link-deps">, Group<f_Group>;
 def fxray_instrumentation_bundle :
   Joined<["-"], "fxray-instrumentation-bundle=">,
   Group<f_Group>, Visibility<[ClangOption, CC1Option]>,
-  HelpText<"Select which XRay instrumentation points to emit. Options: all, none, function-entry, function-exit, function, custom. Default is 'all'.  'function' includes both 'function-entry' and 'function-exit'.">;
+  HelpText<"Select which XRay instrumentation points to emit. Options: all, none, function-entry, function-exit, function, custom, custom-region, custom-region-entry, custom-region-exit. Default is 'all'.  'function' includes both 'function-entry' and 'function-exit'.">;
 
 def fxray_function_groups :
   Joined<["-"], "fxray-function-groups=">,

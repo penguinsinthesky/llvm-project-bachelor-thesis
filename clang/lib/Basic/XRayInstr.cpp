@@ -26,6 +26,10 @@ XRayInstrMask parseXRayInstrValue(StringRef Value) {
           .Case("function-entry", XRayInstrKind::FunctionEntry)
           .Case("function-exit", XRayInstrKind::FunctionExit)
           .Case("typed", XRayInstrKind::Typed)
+          .Case("custom-region", XRayInstrKind::CustomRegionEntry |
+                                     XRayInstrKind::CustomRegionExit)
+          .Case("custom-region-entry", XRayInstrKind::CustomRegionEntry)
+          .Case("custom-region-exit", XRayInstrKind::CustomRegionExit)
           .Case("none", XRayInstrKind::None)
           .Default(XRayInstrKind::None);
   return ParsedKind;
@@ -56,5 +60,13 @@ void serializeXRayInstrValue(XRayInstrSet Set,
     Values.push_back("function-entry");
   else if (Set.has(XRayInstrKind::FunctionExit))
     Values.push_back("function-exit");
+
+  if (Set.has(XRayInstrKind::CustomRegionEntry) &&
+      Set.has(XRayInstrKind::CustomRegionExit))
+    Values.push_back("custom-region");
+  else if (Set.has(XRayInstrKind::CustomRegionEntry))
+    Values.push_back("custom-region-entry");
+  else if (Set.has(XRayInstrKind::CustomRegionExit))
+    Values.push_back("custom-region-exit");
 }
 } // namespace clang

@@ -113,10 +113,12 @@ XRayArgs::XRayArgs(const ToolChain &TC, const ArgList &Args) {
       llvm::SmallVector<StringRef, 2> BundleParts;
       llvm::SplitString(B, BundleParts, ",");
       for (const auto &P : BundleParts) {
-        // TODO: Automate the generation of the string case table.
+        // TODO: Automate the generation of the string case table. "typed" is
+        // already missing ;-)
         auto Valid = llvm::StringSwitch<bool>(P)
                          .Cases({"none", "all", "function", "function-entry",
-                                 "function-exit", "custom"},
+                                 "function-exit", "custom", "custom-region",
+                                 "custom-region-entry", "custom-region-exit"},
                                 true)
                          .Default(false);
 
