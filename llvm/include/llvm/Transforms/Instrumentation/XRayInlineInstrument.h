@@ -5,17 +5,31 @@
 
 namespace llvm {
 
-class XRayPreInlineInstrumentPass
-    : public RequiredPassInfoMixin<XRayPreInlineInstrumentPass> {
+/**
+ * Pass that automatically instruments all functions that do not have
+ * the `xray_never_instrument` attribute with custom regions of kind INLINED.
+ */
+class XRayPreInlineAutoInstrumentPass
+    : public RequiredPassInfoMixin<XRayPreInlineAutoInstrumentPass> {
 public:
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
-
-private:
-  static bool shouldInstrument(const Function &F);
-
-  void encloseInCustomRegion(Function &F);
 };
 
+/**
+ * Pass that instruments functions with the `xray_always_instrument` attribute
+ * with custom regions of type INLINED.
+ * This is used to also instrument these functions even if they are inlined.
+ */
+class XRayPreInlineInstrumentIfAlwaysPass
+    : public RequiredPassInfoMixin<XRayPreInlineInstrumentIfAlwaysPass> {
+public:
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+/**
+ * Pass to remove any INLINED custom regions from a function whose original
+ * function is the parent function itself.
+ */
 class XRayPostInlinePurgePass
     : public RequiredPassInfoMixin<XRayPostInlinePurgePass> {
 public:

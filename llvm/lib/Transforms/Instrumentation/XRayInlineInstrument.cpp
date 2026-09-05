@@ -10,50 +10,7 @@
 
 namespace llvm {
 
-PreservedAnalyses
-XRayPreInlineInstrumentPass::run(Module &M,
-                                 [[maybe_unused]] ModuleAnalysisManager &AM) {
-
-  bool Modified = false;
-
-  for (auto &F : M.functions()) {
-    if (!shouldInstrument(F)) {
-      continue;
-    }
-
-    encloseInCustomRegion(F);
-    Modified = true;
-  }
-
-  return Modified ? PreservedAnalyses::none() : PreservedAnalyses::all();
-}
-
-bool XRayPreInlineInstrumentPass::shouldInstrument(const Function &F) {
-  if (F.isDeclaration()) {
-    // never instrument declarations
-    return false;
-  }
-
-  const auto InstrAttr = F.getFnAttribute("function-instrument");
-
-  const bool AlwaysInstrument = InstrAttr.isStringAttribute() &&
-                                InstrAttr.getValueAsString() == "xray-always";
-  const bool NeverInstrument = InstrAttr.isStringAttribute() &&
-                               InstrAttr.getValueAsString() == "xray-never";
-
-  if (NeverInstrument && !AlwaysInstrument) {
-    // always "beats" never if they are both present
-    return false;
-  }
-
-  // TODO check skip-enter/exit attributes, bundles
-
-  // TODO apply some heuristic now
-
-  return true;
-}
-
-void XRayPreInlineInstrumentPass::encloseInCustomRegion(Function &F) {
+static void encloseInCustomRegion(Function &F) {
   auto Inserter = XRayCustomRegionInserter::forInlinedFunction(F);
 
   // prepend region enter intrinsic to entry block
@@ -67,6 +24,61 @@ void XRayPreInlineInstrumentPass::encloseInCustomRegion(Function &F) {
   while (IRBuilder<> *ExitBuilder = Exits.Next()) {
     Inserter.insertExit(*ExitBuilder);
   }
+}
+
+PreservedAnalyses XRayPreInlineAutoInstrumentPass::run(
+    Module &M, [[maybe_unused]] ModuleAnalysisManager &AM) {
+
+  bool Modified = false;
+
+  for (auto &F : M.functions()) {
+    if (F.isDeclaration()) {
+      // never instrument declarations
+      continue;
+    }
+
+    const auto InstrAttr = F.getFnAttribute("function-instrument");
+
+    const bool AlwaysInstrument = InstrAttr.isStringAttribute() &&
+                                  InstrAttr.getValueAsString() == "xray-always";
+    const bool NeverInstrument = InstrAttr.isStringAttribute() &&
+                                 InstrAttr.getValueAsString() == "xray-never";
+
+    if (NeverInstrument && !AlwaysInstrument) {
+      // always "beats" never if they are both present
+      continue;
+    }
+
+    // TODO check bundle
+
+    encloseInCustomRegion(F);
+    Modified = true;
+  }
+
+  return Modified ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+
+PreservedAnalyses
+XRayPreInlineInstrumentIfAlwaysPass::run(Module &M, ModuleAnalysisManager &AM) {
+  bool Modified = false;
+
+  for (auto &F : M.functions()) {
+    const auto InstrAttr = F.getFnAttribute("function-instrument");
+
+    const bool AlwaysInstrument = InstrAttr.isStringAttribute() &&
+                                  InstrAttr.getValueAsString() == "xray-always";
+
+    if (F.isDeclaration() || !AlwaysInstrument) {
+      // if function has no body or is not annotated with
+      // xray_always_instrument, don't touch it
+      continue;
+    }
+
+    encloseInCustomRegion(F);
+    Modified = true;
+  }
+
+  return Modified ? PreservedAnalyses::none() : PreservedAnalyses::all();
 }
 
 namespace {
