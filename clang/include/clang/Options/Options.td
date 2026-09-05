@@ -3385,7 +3385,13 @@ def fxray_selected_function_group :
 defm xray_instrument_inlined : BoolFOption<"xray-instrument-inlined",
                               CodeGenOpts<"XRayInstrumentInlined">, DefaultFalse,
                               PosFlag<SetTrue, [], [ClangOption, CC1Option],
-                                      "Also generate XRay instrumentation sleds on entry/exit of inlined functions">,
+                                      "Also generate XRay instrumentation sleds on entry/exit of inlined functions. Analogous to -fxray-instrument">,
+                              NegFlag<SetFalse>>;
+
+defm xray_instrument_inlined_if_always : BoolFOption<"xray-instrument-inlined-if-always",
+                              CodeGenOpts<"XRayInstrumentInlinedIfAlways">, DefaultFalse,
+                              PosFlag<SetTrue, [], [ClangOption, CC1Option],
+                                      "Instrument inlined functions annotated with xray_always_instrument">,
                               NegFlag<SetFalse>>;
 
 defm xray_instrument_outer_loops : BoolFOption<"xray-instrument-outer-loops",

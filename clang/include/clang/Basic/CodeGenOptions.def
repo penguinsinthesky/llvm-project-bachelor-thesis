@@ -126,6 +126,8 @@ CODEGENOPT(XRayInstrumentFunctions , 1, 0, Benign) ///< Set when -fxray-instrume
 
 CODEGENOPT(XRayInstrumentInlined , 1, 0, Benign) ///< Set when -fxray-instrument-inlined is
                                                    ///< enabled.
+CODEGENOPT(XRayInstrumentInlinedIfAlways , 1, 0, Benign) ///< Set when -fxray-instrument-inlined-if-always is
+                                                   ///< enabled.
 CODEGENOPT(XRayInstrumentOuterLoops , 1, 0, Benign) ///< Set when -fxray-instrument-outer-loops is
                                                    ///< enabled.
 CODEGENOPT(StackSizeSection  , 1, 0, Benign) ///< Set when -fstack-size-section is enabled.

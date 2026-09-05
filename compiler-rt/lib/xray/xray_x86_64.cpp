@@ -1,8 +1,10 @@
 #include "cpuid.h"
 #include "sanitizer_common/sanitizer_common.h"
+#include <cassert>
 #if !SANITIZER_FUCHSIA
 #include "sanitizer_common/sanitizer_posix.h"
 #endif
+#include "xray/xray_custom_regions.h"
 #include "xray_defs.h"
 #include "xray_interface_internal.h"
 
@@ -321,20 +323,23 @@ patchCustomRegionProbe(const bool Enable, const XRaySledEntry &Sled,
   //
   // xray_custom_region_sled_n:
   //   jmp +12          // 2 bytes
-  //   push %edi        // 1 byte
+  //   push %rdi        // 1 byte
   //   nopw             // 5 bytes
   //   callq <trampoline>
-  //   pop %edi         // 1 byte
+  //   pop %rdi         // 1 byte
   //
   // Patching will replace the jmp with a nop and the 5-byte nop with a mov:
   //
   //   nopw            // 2 bytes
-  //   push %edi       // 1 byte
+  //   push %rdi       // 1 byte
   //   mov %esi, <func-id> // 5 bytes
   //   ...
   //
   //
   // The "unpatch" should just turn the 'nopw' back to a 'jmp +12'.
+
+ // TODO REMOVE AGAIN
+  assert(__xray_custom_region_get_name(FuncId) != nullptr);
 
   const uint64_t Address = Sled.address();
   if (Enable) {

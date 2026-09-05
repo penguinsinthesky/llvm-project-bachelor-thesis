@@ -1121,14 +1121,28 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
         MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
       });
 
+      bool AddPurgePass = false;
       if (CodeGenOpts.XRayInstrumentInlined) {
         // insert pass before optimizations are done so intrinsic calls will be
         // inlined along with the function body
         PB.registerPipelineStartEPCallback(
             [](ModulePassManager &MPM, OptimizationLevel Level) {
-              MPM.addPass(XRayPreInlineInstrumentPass());
+              MPM.addPass(XRayPreInlineAutoInstrumentPass());
             });
+        AddPurgePass = true;
+      }
 
+      if (CodeGenOpts.XRayInstrumentInlinedIfAlways) {
+        // insert pass before optimizations are done so intrinsic calls will be
+        // inlined along with the function body
+        PB.registerPipelineStartEPCallback(
+            [](ModulePassManager &MPM, OptimizationLevel Level) {
+              MPM.addPass(XRayPreInlineInstrumentIfAlwaysPass());
+            });
+        AddPurgePass = true;
+      }
+
+      if (AddPurgePass) {
         // insert "cleanup" pass after inlining
         PB.registerOptimizerEarlyEPCallback([](ModulePassManager &MPM,
                                                OptimizationLevel Level,

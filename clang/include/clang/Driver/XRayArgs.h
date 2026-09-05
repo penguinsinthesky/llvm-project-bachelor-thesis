@@ -28,6 +28,7 @@ class XRayArgs {
   llvm::opt::Arg *XRayInstrument = nullptr;
   bool XRayRT = true;
   bool XRayInstrumentInlined = false;
+  bool XRayInstrumentInlinedIfAlways = false;
   bool XRayInstrumentOuterLoops = false;
   bool XRayShared = false;
 
