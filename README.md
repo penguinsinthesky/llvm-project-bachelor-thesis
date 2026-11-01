@@ -1,3 +1,10 @@
+This repository contains the code for my bachelor thesis on the
+[xray-custom-regions](https://github.com/penguinsinthesky/llvm-project-bachelor-thesis/tree/xray-custom-regions) branch.
+The upstreaming of this feature mainly takes place on
+the [upstreaming-main](https://github.com/penguinsinthesky/llvm-project-bachelor-thesis/tree/upstreaming-main) branch.
+
+---
+
 # The LLVM Compiler Infrastructure
 
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/llvm/llvm-project/badge)](https://securityscorecards.dev/viewer/?uri=github.com/llvm/llvm-project)
