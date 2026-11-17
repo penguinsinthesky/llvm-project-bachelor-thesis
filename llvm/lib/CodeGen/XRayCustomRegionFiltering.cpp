@@ -1,7 +1,8 @@
 #include "llvm/CodeGen/XRayCustomRegionFiltering.h"
+#include "llvm/ADT/STLExtras.h"
 
-#include "../../../compiler-rt/include/xray/xray_custom_region_kind.h"
 #include "llvm/ADT/DepthFirstIterator.h"
+#include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineFunction.h"
@@ -14,179 +15,208 @@
 using namespace llvm;
 
 namespace {
-struct CustomRegionInstructions {
-  SmallVector<MachineInstr *, 2> EnterProbes;
-  SmallVector<MachineInstr *, 2> ExitProbes;
-  SmallPtrSet<const MachineBasicBlock *, 8> ForwardReachable;
-  SmallPtrSet<const MachineBasicBlock *, 8> BackwardReachable;
 
-  CustomRegionInstructions() = default;
+typedef unsigned RegionInstanceId;
 
-  /// invalidates reachability sets
-  uint64_t countInstructions() {
-    // now ForwardReachable only contains blocks that are contained in a path
-    // from the entry to the exit probe
-    set_intersect(ForwardReachable, BackwardReachable);
+struct RegionInstance {
+  XRayCustomRegionInfo RegionInfo;
+  SmallPtrSet<MachineInstr *, 2> EnterProbes;
+  SmallPtrSet<MachineInstr *, 2> ExitProbes;
+  SmallPtrSet<const MachineInstr *, 16> Instructions;
 
-    SmallPtrSet<const MachineBasicBlock *, 8> &BlocksInRegion =
-        ForwardReachable;
-
-    uint64_t Count = 0;
-
-    // for each block containing an entry probe, only count those instructions
-    // after it.
-    // if the matching exit probe is in the same block, do not count it and any
-    // instructions after it.
-    for (const auto *EnterProbe : EnterProbes) {
-      const MachineBasicBlock *ParentBlock = EnterProbe->getParent();
-      bool AfterEnter = false;
-      for (const auto &EnterSibling : *ParentBlock) {
-        if (AfterEnter &&
-            EnterSibling.getOpcode() ==
-                TargetOpcode::PATCHABLE_CUSTOM_REGION_EXIT &&
-            EnterSibling.getOperand(0).getGlobal() ==
-                EnterProbe->getOperand(0).getGlobal()) {
-          // if we encounter this region's exit in this block already, stop
-          // counting in this block
-          break;
-        }
-
-        if (AfterEnter) {
-          Count++;
-        }
-
-        if (&EnterSibling == EnterProbe) {
-          AfterEnter = true;
-        }
-      }
-
-      // do not count twice
-      BlocksInRegion.erase(ParentBlock);
-    }
-
-    // for each block containing an exit probe, only count those instructions
-    // before it.
-    // if the matching enter probe is in the same block, do not count it and
-    // anything before.
-    for (const auto *ExitProbe : ExitProbes) {
-      const MachineBasicBlock *ParentBlock = ExitProbe->getParent();
-      bool BeforeExit = false;
-
-      // iterate in reverse to handle this region's enter probe correctly
-      for (const auto &ExitSibling : reverse(ParentBlock->instrs())) {
-        if (BeforeExit &&
-            ExitSibling.getOpcode() ==
-                TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER &&
-            ExitSibling.getOperand(0).getGlobal() ==
-                ExitProbe->getOperand(0).getGlobal()) {
-          // if we encounter this region's enter probe, stop counting in this
-          // block
-          break;
-        }
-
-        if (BeforeExit) {
-          Count++;
-        }
-
-        if (&ExitSibling == ExitProbe) {
-          BeforeExit = true;
-        }
-      }
-
-      // do not count twice
-      BlocksInRegion.erase(ParentBlock);
-    }
-
-    // TODO also filter out other XRay pseudo instructions? (also in existing
-    // XRayInstrumentation.cpp)
-
-    // count instructions in all other blocks
-    for (const auto *Block : BlocksInRegion) {
-      Count += Block->size();
-    }
-
-    return Count;
+  explicit RegionInstance(const XRayCustomRegionInfo RegionInfo,
+                          MachineInstr *FirstEnter)
+      : RegionInfo(RegionInfo), Invalidated(false) {
+    EnterProbes.insert(FirstEnter);
   }
+
+  bool join(const RegionInstance &Other) {
+    assert((RegionInfo == Other.RegionInfo) &&
+           "Cannot join two region instance of different regions");
+
+    assert((!Invalidated && !Other.Invalidated) &&
+           "Cannot join invalidated region instances");
+
+    return set_union(EnterProbes, Other.EnterProbes) ||
+           set_union(ExitProbes, Other.ExitProbes) ||
+           set_union(Instructions, Other.Instructions);
+  }
+
+  void invalidate() {
+    assert(
+        (!Invalidated) &&
+        "Cannot invalidate region instance which has already been invalidated");
+    Invalidated = true;
+  }
+
+  // prevent accidental copying
+  RegionInstance(const RegionInstance &) = delete;
+  RegionInstance &operator=(const RegionInstance &) = delete;
+
+  RegionInstance(RegionInstance &&) noexcept = default;
+  RegionInstance &operator=(RegionInstance &&) noexcept = default;
+
+private:
+  bool Invalidated;
+
+  friend class RegionInstanceStorage;
 };
+
+class RegionInstanceStorage {
+public:
+  RegionInstanceId newInstance(const XRayCustomRegionInfo RegionInfo,
+                               MachineInstr *FirstEnter) {
+    const RegionInstanceId Id = Storage.size();
+    Storage.emplace_back(RegionInfo, FirstEnter);
+    Eq.insert(Id);
+
+    return Id;
+  }
+
+  RegionInstance &operator[](const RegionInstanceId Id) {
+    const auto Leader = Eq.findLeader(Id);
+    const size_t Index = *Leader;
+    return Storage[Index];
+  }
+
+  const RegionInstance &operator[](const RegionInstanceId Id) const {
+    return const_cast<RegionInstanceStorage *>(this)->operator[](Id);
+  }
+
+  void join(const RegionInstanceId A, const RegionInstanceId B) {
+    if (A == B) {
+      // this can happen in diamond shaped CFGs where one entry probe is
+      // followed by one exit probe with branching in between.
+      return;
+    }
+
+    const RegionInstanceId ALeader = Eq.getLeaderValue(A);
+    const RegionInstanceId BLeader = Eq.getLeaderValue(B);
+
+    Storage[ALeader].join(Storage[BLeader]); // join both instances into A
+
+    const auto UnionLeader = Eq.unionSets(A, B);
+
+    Storage[BLeader].invalidate(); // B is no longer valid
+
+    assert(*UnionLeader == ALeader);
+  }
+
+  template <typename FuncT> void forEachInstance(FuncT Consumer) const {
+    for (const auto *I : Eq) {
+      if (!I->isLeader()) {
+        continue;
+      }
+
+      const RegionInstanceId Index = I->getData();
+      const RegionInstance &Instance = Storage[Index];
+      assert(!Instance.Invalidated && "Invalidated region cannot be leader");
+      Consumer(Instance);
+    }
+  }
+
+private:
+  EquivalenceClasses<RegionInstanceId> Eq;
+  SmallVector<RegionInstance, 4> Storage;
+};
+
+// TODO extend to stack to support nesting
+using DataflowFact = SmallDenseMap<XRayCustomRegionInfo, RegionInstanceId>;
 
 class XRayInlinedRegionFilter {
 public:
   bool run(MachineFunction &MF) const {
-    DenseMap<XRayCustomRegionInfo, CustomRegionInstructions> RegionInstructions;
+    RegionInstanceStorage InstanceStorage;
 
-    for (auto &Block : MF) {
-      for (auto &Inst : Block) {
-        if (Inst.getOpcode() == TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER) {
-          auto *RegionInfoGlobal =
-              cast<GlobalVariable>(Inst.getOperand(0).getGlobal());
-          auto RegionInfo =
-              XRayCustomRegionInfo::fromRegionInfoGlobal(RegionInfoGlobal);
-          if (RegionInfo.getRegionKind() !=
-              XRayCustomRegionKind::INLINED_FUNCTION) {
-            // not an inlined function
-            continue;
+    SmallDenseMap<const MachineBasicBlock *, DataflowFact> ROuts;
+
+    // initialize R_out with empty maps for all blocks
+    for (const auto &Block : MF) {
+      ROuts.insert(std::make_pair(&Block, DataflowFact()));
+    }
+
+    ReversePostOrderTraversal<MachineFunction *> RPO(&MF);
+
+    for (auto *Block : RPO) {
+      DataflowFact RIn;
+
+      if (Block->pred_size() > 0) {
+        // merge incoming regions
+
+        // initialize with incoming regions from first pred
+        RIn = ROuts[*Block->pred_begin()];
+
+        // skip first pred here
+        for (const auto *Pred : drop_begin(Block->predecessors(), 1)) {
+          const auto &PredRegions = ROuts[Pred];
+          for (const auto &[RegionInfo, InstanceId] : PredRegions) {
+            // since regions are well-formed, we expect all incoming edges to
+            // have the same open regions
+            auto SameRegion = RIn.find(RegionInfo);
+
+            assert((SameRegion != RIn.end()) &&
+                   "Incoming edge has an open region which others don't have");
+
+            // join incoming instances
+            InstanceStorage.join(SameRegion->second, InstanceId);
           }
+        }
+      }
 
-          auto &Instructions = RegionInstructions[RegionInfo];
+      for (auto &I : *Block) {
+        // handle entry/exit of region
+        if (I.getOpcode() == TargetOpcode::PATCHABLE_CUSTOM_REGION_ENTER) {
+          // new instance of region starts here
+          const auto RegionInfo = XRayCustomRegionInfo::fromRegionInfoGlobal(
+              cast<GlobalVariable>(I.getOperand(0).getGlobal()));
 
-          Instructions.EnterProbes.push_back(&Inst);
-          // do a forward search from here
-          for (const auto *Succ : depth_first(&Block)) {
-            Instructions.ForwardReachable.insert(Succ);
-          }
-        } else if (Inst.getOpcode() ==
+          RegionInstanceId NewInstanceId =
+              InstanceStorage.newInstance(RegionInfo, &I);
+
+          const auto [_, Inserted] =
+              RIn.insert(std::make_pair(RegionInfo, NewInstanceId));
+
+          assert(Inserted && "Encountered entry probe for already open region");
+        } else if (I.getOpcode() ==
                    TargetOpcode::PATCHABLE_CUSTOM_REGION_EXIT) {
-          auto *RegionInfoGlobal =
-              cast<GlobalVariable>(Inst.getOperand(0).getGlobal());
-          auto RegionInfo =
-              XRayCustomRegionInfo::fromRegionInfoGlobal(RegionInfoGlobal);
-          if (RegionInfo.getRegionKind() !=
-              XRayCustomRegionKind::INLINED_FUNCTION) {
-            // not an inlined function
-            continue;
-          }
+          // instance of region is closed here
+          const auto RegionInfo = XRayCustomRegionInfo::fromRegionInfoGlobal(
+              cast<GlobalVariable>(I.getOperand(0).getGlobal()));
 
-          auto &Instructions = RegionInstructions[RegionInfo];
+          auto InstanceIt = RIn.find(RegionInfo);
+          assert((InstanceIt != RIn.end()) &&
+                 "Exited region that was currently not open");
 
-          Instructions.ExitProbes.push_back(&Inst);
-          // do a backwards search from here
-          for (const auto *Pred : inverse_depth_first(&Block)) {
-            Instructions.BackwardReachable.insert(Pred);
+          RegionInstance &Instance = InstanceStorage[InstanceIt->second];
+
+          Instance.ExitProbes.insert(&I); // record exit probe
+          RIn.erase(InstanceIt);          // remove from currently open regions
+        } else {
+          // add instructions to sets of all currently open regions
+          // (does not include probe instructions themselves)
+          for (const auto [_, InstanceId] : RIn) {
+            RegionInstance &Instance = InstanceStorage[InstanceId];
+            Instance.Instructions.insert(&I);
           }
         }
       }
+
+      const auto PrevROut = ROuts.find(Block);
+      assert((PrevROut != ROuts.end()) &&
+             "Updating R_out for block with no previous R_out");
+
+      // update ROut for this block
+      PrevROut->second = std::move(RIn);
     }
 
-    bool Modified = false;
+    InstanceStorage.forEachInstance([](const RegionInstance &Instance) {
+      const size_t InstructionCount = Instance.Instructions.size();
 
-    // TODO respect loops like XRayInstrumentation.cpp
+      errs() << "Instance of region \"" << Instance.RegionInfo.getRegionName()
+             << "\": " << InstructionCount << " instructions\n";
+    });
 
-    for (auto &[RegionInfo, Instructions] : RegionInstructions) {
-      const auto InlinedFunctionInfo = RegionInfo.getInlinedFunctionInfo();
-      const uint64_t Threshold = InlinedFunctionInfo.getInstructionThreshold();
-      const uint64_t InstCount = Instructions.countInstructions();
-
-      if (InlinedFunctionInfo.alwaysInstrument()) {
-        // do not filter inlined regions originating from functions
-        // annotated with xray_always_instrument
-        continue;
-      }
-
-      if (InstCount < Threshold) {
-        // region does not contain enough instructions -> remove again
-        for (auto *Probe : Instructions.EnterProbes) {
-          Probe->eraseFromParent();
-        }
-
-        for (auto *Probe : Instructions.ExitProbes) {
-          Probe->eraseFromParent();
-        }
-
-        Modified = true;
-      }
-    }
-
-    return Modified;
+    return false; // TODO actually remove regions
   }
 };
 
